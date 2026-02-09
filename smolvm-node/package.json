@@ -16,15 +16,18 @@
     "dist"
   ],
   "scripts": {
+    "generate": "openapi-generator-cli generate -i ../openapi/openapi.json -g typescript-fetch -o ./src/generated --additional-properties=supportsES6=true,typescriptThreePlus=true,withInterfaces=true",
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vitest run --reporter=verbose",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run generate && npm run build"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.15.3",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
     "vitest": "^1.0.0",

@@ -1,9 +1,17 @@
+/**
+ * SmolvmClient - HTTP client for the smolvm API.
+ *
+ * This client uses types generated from the OpenAPI spec for type safety.
+ */
+
 import {
   SmolvmError,
   ConnectionError,
   TimeoutError,
   parseApiError,
 } from "./errors.js";
+
+// Import types from generated OpenAPI models
 import type {
   HealthResponse,
   CreateSandboxRequest,
@@ -16,20 +24,37 @@ import type {
   ContainerExecRequest,
   StopContainerRequest,
   DeleteContainerRequest,
+  DeleteResponse,
   ImageInfo,
   PullImageRequest,
-  LogsQuery,
+  PullImageResponse,
   ApiErrorResponse,
   ListSandboxesResponse,
   ListContainersResponse,
   ListImagesResponse,
-  PullImageResponse,
-} from "./types.js";
+  CreateMicrovmRequest,
+  MicrovmInfo,
+  MicrovmExecRequest,
+  ListMicrovmsResponse,
+  LogsQuery,
+} from "./generated/models/index.js";
+
+/** Response from starting a container. */
+interface StartResponse {
+  started: string;
+}
+
+/** Response from stopping a container. */
+interface StopResponse {
+  stopped: string;
+}
 
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
 /**
  * Low-level HTTP client for the smolvm API.
+ *
+ * Types are generated from the OpenAPI specification for guaranteed compatibility.
  */
 export class SmolvmClient {
   readonly baseUrl: string;
@@ -176,11 +201,15 @@ export class SmolvmClient {
 
   /**
    * Delete a sandbox.
+   *
+   * @param name - Sandbox name
+   * @param force - Force delete even if VM is still running (may orphan the process)
    */
-  async deleteSandbox(name: string): Promise<void> {
-    await this.request<void>(
+  async deleteSandbox(name: string, force?: boolean): Promise<DeleteResponse> {
+    const query = force ? "?force=true" : "";
+    return this.request<DeleteResponse>(
       "DELETE",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}`
+      `/api/v1/sandboxes/${encodeURIComponent(name)}${query}`
     );
   }
 
@@ -197,8 +226,8 @@ export class SmolvmClient {
     timeout?: number
   ): Promise<ExecResponse> {
     // Use longer timeout for execution if timeout_secs is specified
-    const requestTimeout = req.timeout_secs
-      ? (req.timeout_secs + 10) * 1000
+    const requestTimeout = req.timeoutSecs
+      ? (req.timeoutSecs + 10) * 1000
       : timeout;
     return this.request<ExecResponse>(
       "POST",
@@ -217,8 +246,8 @@ export class SmolvmClient {
     timeout?: number
   ): Promise<ExecResponse> {
     // Use longer timeout for run if timeout_secs is specified
-    const requestTimeout = req.timeout_secs
-      ? (req.timeout_secs + 10) * 1000
+    const requestTimeout = req.timeoutSecs
+      ? (req.timeoutSecs + 10) * 1000
       : timeout;
     return this.request<ExecResponse>(
       "POST",
@@ -240,7 +269,7 @@ export class SmolvmClient {
     if (query?.follow) {
       params.set("follow", "true");
     }
-    if (query?.tail !== undefined) {
+    if (query?.tail != null) {
       params.set("tail", query.tail.toString());
     }
 
@@ -333,8 +362,8 @@ export class SmolvmClient {
   async startContainer(
     sandbox: string,
     containerId: string
-  ): Promise<ContainerInfo> {
-    return this.request<ContainerInfo>(
+  ): Promise<StartResponse> {
+    return this.request<StartResponse>(
       "POST",
       `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/start`
     );
@@ -347,9 +376,9 @@ export class SmolvmClient {
     sandbox: string,
     containerId: string,
     req?: StopContainerRequest
-  ): Promise<ContainerInfo> {
+  ): Promise<StopResponse> {
     // API requires a JSON body even if empty
-    return this.request<ContainerInfo>(
+    return this.request<StopResponse>(
       "POST",
       `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/stop`,
       req ?? {}
@@ -363,9 +392,9 @@ export class SmolvmClient {
     sandbox: string,
     containerId: string,
     req?: DeleteContainerRequest
-  ): Promise<void> {
+  ): Promise<DeleteResponse> {
     // API requires force in body, not query params
-    await this.request<void>(
+    return this.request<DeleteResponse>(
       "DELETE",
       `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}`,
       req ?? {}
@@ -381,8 +410,8 @@ export class SmolvmClient {
     req: ContainerExecRequest,
     timeout?: number
   ): Promise<ExecResponse> {
-    const requestTimeout = req.timeout_secs
-      ? (req.timeout_secs + 10) * 1000
+    const requestTimeout = req.timeoutSecs
+      ? (req.timeoutSecs + 10) * 1000
       : timeout;
     return this.request<ExecResponse>(
       "POST",
@@ -422,5 +451,86 @@ export class SmolvmClient {
       timeout
     );
     return response.image;
+  }
+
+  // ==========================================================================
+  // MicroVMs
+  // ==========================================================================
+
+  /**
+   * Create a new microvm.
+   */
+  async createMicrovm(req: CreateMicrovmRequest): Promise<MicrovmInfo> {
+    return this.request<MicrovmInfo>("POST", "/api/v1/microvms", req);
+  }
+
+  /**
+   * List all microvms.
+   */
+  async listMicrovms(): Promise<MicrovmInfo[]> {
+    const response = await this.request<ListMicrovmsResponse>(
+      "GET",
+      "/api/v1/microvms"
+    );
+    return response.microvms;
+  }
+
+  /**
+   * Get microvm by name.
+   */
+  async getMicrovm(name: string): Promise<MicrovmInfo> {
+    return this.request<MicrovmInfo>(
+      "GET",
+      `/api/v1/microvms/${encodeURIComponent(name)}`
+    );
+  }
+
+  /**
+   * Start a microvm.
+   */
+  async startMicrovm(name: string): Promise<MicrovmInfo> {
+    return this.request<MicrovmInfo>(
+      "POST",
+      `/api/v1/microvms/${encodeURIComponent(name)}/start`
+    );
+  }
+
+  /**
+   * Stop a microvm.
+   */
+  async stopMicrovm(name: string): Promise<MicrovmInfo> {
+    return this.request<MicrovmInfo>(
+      "POST",
+      `/api/v1/microvms/${encodeURIComponent(name)}/stop`
+    );
+  }
+
+  /**
+   * Delete a microvm.
+   */
+  async deleteMicrovm(name: string): Promise<void> {
+    await this.request<void>(
+      "DELETE",
+      `/api/v1/microvms/${encodeURIComponent(name)}`
+    );
+  }
+
+  /**
+   * Execute a command in a microvm.
+   */
+  async execMicrovm(
+    name: string,
+    req: MicrovmExecRequest,
+    timeout?: number
+  ): Promise<ExecResponse> {
+    const requestTimeout = req.timeoutSecs
+      ? (req.timeoutSecs + 10) * 1000
+      : timeout;
+    return this.request<ExecResponse>(
+      "POST",
+      `/api/v1/microvms/${encodeURIComponent(name)}/exec`,
+      req,
+      requestTimeout
+    );
   }
 }

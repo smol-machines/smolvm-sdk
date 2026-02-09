@@ -242,7 +242,7 @@ var SmolvmClient = class {
    * Execute a command in the sandbox VM.
    */
   async exec(sandbox, req, timeout) {
-    const requestTimeout = req.timeout_secs ? (req.timeout_secs + 10) * 1e3 : timeout;
+    const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
     return this.request(
       "POST",
       `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/exec`,
@@ -254,7 +254,7 @@ var SmolvmClient = class {
    * Run a command in a container image within the sandbox.
    */
   async run(sandbox, req, timeout) {
-    const requestTimeout = req.timeout_secs ? (req.timeout_secs + 10) * 1e3 : timeout;
+    const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
     return this.request(
       "POST",
       `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/run`,
@@ -270,7 +270,7 @@ var SmolvmClient = class {
     if (query?.follow) {
       params.set("follow", "true");
     }
-    if (query?.tail !== void 0) {
+    if (query?.tail != null) {
       params.set("tail", query.tail.toString());
     }
     const queryString = params.toString();
@@ -356,28 +356,24 @@ var SmolvmClient = class {
     return this.request(
       "POST",
       `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/stop`,
-      req
+      req ?? {}
     );
   }
   /**
    * Delete a container.
    */
   async deleteContainer(sandbox, containerId, req) {
-    const params = new URLSearchParams();
-    if (req?.force) {
-      params.set("force", "true");
-    }
-    const queryString = params.toString();
     await this.request(
       "DELETE",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}${queryString ? `?${queryString}` : ""}`
+      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}`,
+      req ?? {}
     );
   }
   /**
    * Execute a command in a container.
    */
   async execContainer(sandbox, containerId, req, timeout) {
-    const requestTimeout = req.timeout_secs ? (req.timeout_secs + 10) * 1e3 : timeout;
+    const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
     return this.request(
       "POST",
       `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/exec`,
@@ -410,6 +406,73 @@ var SmolvmClient = class {
     );
     return response.image;
   }
+  // ==========================================================================
+  // MicroVMs
+  // ==========================================================================
+  /**
+   * Create a new microvm.
+   */
+  async createMicrovm(req) {
+    return this.request("POST", "/api/v1/microvms", req);
+  }
+  /**
+   * List all microvms.
+   */
+  async listMicrovms() {
+    const response = await this.request(
+      "GET",
+      "/api/v1/microvms"
+    );
+    return response.microvms;
+  }
+  /**
+   * Get microvm by name.
+   */
+  async getMicrovm(name) {
+    return this.request(
+      "GET",
+      `/api/v1/microvms/${encodeURIComponent(name)}`
+    );
+  }
+  /**
+   * Start a microvm.
+   */
+  async startMicrovm(name) {
+    return this.request(
+      "POST",
+      `/api/v1/microvms/${encodeURIComponent(name)}/start`
+    );
+  }
+  /**
+   * Stop a microvm.
+   */
+  async stopMicrovm(name) {
+    return this.request(
+      "POST",
+      `/api/v1/microvms/${encodeURIComponent(name)}/stop`
+    );
+  }
+  /**
+   * Delete a microvm.
+   */
+  async deleteMicrovm(name) {
+    await this.request(
+      "DELETE",
+      `/api/v1/microvms/${encodeURIComponent(name)}`
+    );
+  }
+  /**
+   * Execute a command in a microvm.
+   */
+  async execMicrovm(name, req, timeout) {
+    const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
+    return this.request(
+      "POST",
+      `/api/v1/microvms/${encodeURIComponent(name)}/exec`,
+      req,
+      requestTimeout
+    );
+  }
 };
 
 // src/execution.ts
@@ -430,7 +493,7 @@ var ExecResult = class {
   stdout;
   stderr;
   constructor(response) {
-    this.exitCode = response.exit_code;
+    this.exitCode = response.exit_code ?? response.exitCode;
     this.stdout = response.stdout;
     this.stderr = response.stderr;
   }
@@ -490,7 +553,7 @@ var Container = class {
     this._info = await this.parent.client.stopContainer(
       this.parent.name,
       this.id,
-      timeout !== void 0 ? { timeout_secs: timeout } : void 0
+      timeout !== void 0 ? { timeoutSecs: timeout } : void 0
     );
   }
   /**
@@ -516,7 +579,7 @@ var Container = class {
         command,
         env,
         workdir: options?.workdir,
-        timeout_secs: options?.timeout
+        timeoutSecs: options?.timeout
       }
     );
     return new ExecResult(response);
@@ -554,7 +617,7 @@ var Container = class {
    * Get the container creation timestamp.
    */
   get createdAt() {
-    return this._info.created_at;
+    return this._info.created_at ?? this._info.createdAt;
   }
   /**
    * Get the raw container info.
@@ -669,7 +732,7 @@ var Sandbox = class _Sandbox {
       command,
       env,
       workdir: options?.workdir,
-      timeout_secs: options?.timeout
+      timeoutSecs: options?.timeout
     });
     return new ExecResult(response);
   }
@@ -683,7 +746,7 @@ var Sandbox = class _Sandbox {
       command,
       env,
       workdir: options?.workdir,
-      timeout_secs: options?.timeout
+      timeoutSecs: options?.timeout
     });
     return new ExecResult(response);
   }

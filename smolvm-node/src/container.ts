@@ -35,10 +35,7 @@ export class Container {
    * Start the container.
    */
   async start(): Promise<void> {
-    this._info = await this.parent.client.startContainer(
-      this.parent.name,
-      this.id
-    );
+    await this.parent.client.startContainer(this.parent.name, this.id);
   }
 
   /**
@@ -46,10 +43,10 @@ export class Container {
    * @param timeout - Timeout in seconds to wait for graceful stop
    */
   async stop(timeout?: number): Promise<void> {
-    this._info = await this.parent.client.stopContainer(
+    await this.parent.client.stopContainer(
       this.parent.name,
       this.id,
-      timeout !== undefined ? { timeout_secs: timeout } : undefined
+      timeout !== undefined ? { timeoutSecs: timeout } : undefined
     );
   }
 
@@ -80,7 +77,7 @@ export class Container {
         command,
         env,
         workdir: options?.workdir,
-        timeout_secs: options?.timeout,
+        timeoutSecs: options?.timeout,
       }
     );
 
@@ -103,7 +100,7 @@ export class Container {
    * Get the current container state.
    */
   get state(): ContainerState {
-    return this._info.state;
+    return this._info.state as ContainerState;
   }
 
   /**
@@ -124,7 +121,9 @@ export class Container {
    * Get the container creation timestamp.
    */
   get createdAt(): number {
-    return this._info.created_at;
+    // Note: API returns snake_case but generated types use camelCase
+    // We access the raw response with snake_case since client doesn't transform
+    return (this._info as any).created_at ?? this._info.createdAt;
   }
 
   /**

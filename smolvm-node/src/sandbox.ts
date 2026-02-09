@@ -112,7 +112,7 @@ export class Sandbox implements ContainerParent {
    * Get the current sandbox state.
    */
   get state(): SandboxState | undefined {
-    return this._info?.state;
+    return this._info?.state as SandboxState | undefined;
   }
 
   /**
@@ -145,7 +145,7 @@ export class Sandbox implements ContainerParent {
       command,
       env,
       workdir: options?.workdir,
-      timeout_secs: options?.timeout,
+      timeoutSecs: options?.timeout,
     });
 
     return new ExecResult(response);
@@ -168,7 +168,7 @@ export class Sandbox implements ContainerParent {
       command,
       env,
       workdir: options?.workdir,
-      timeout_secs: options?.timeout,
+      timeoutSecs: options?.timeout,
     });
 
     return new ExecResult(response);

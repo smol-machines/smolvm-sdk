@@ -1,244 +1,166 @@
+/**
+ * Type definitions for smolvm SDK.
+ *
+ * API types are re-exported from the generated OpenAPI models.
+ * SDK-specific types are defined here for ergonomic wrappers.
+ */
+
+// Re-export all generated types from OpenAPI
+export type {
+  // Request types
+  CreateSandboxRequest,
+  ExecRequest,
+  RunRequest,
+  EnvVar,
+  CreateContainerRequest,
+  ContainerMountSpec,
+  ContainerExecRequest,
+  StopContainerRequest,
+  DeleteContainerRequest,
+  PullImageRequest,
+  LogsQuery,
+  CreateMicrovmRequest,
+  MicrovmExecRequest,
+  RestartSpec,
+  MountSpec,
+  PortSpec,
+  ResourceSpec,
+  DeleteQuery,
+  // Response types
+  HealthResponse,
+  SandboxInfo,
+  MountInfo,
+  ListSandboxesResponse,
+  ExecResponse,
+  ContainerInfo,
+  ListContainersResponse,
+  ImageInfo,
+  ListImagesResponse,
+  PullImageResponse,
+  DeleteResponse,
+  ApiErrorResponse,
+  MicrovmInfo,
+  ListMicrovmsResponse,
+} from "./generated/models/index.js";
+
 // ============================================================================
-// Configuration
+// SDK-specific Configuration Types
 // ============================================================================
 
+import type { MountSpec, PortSpec, ResourceSpec } from "./generated/models/index.js";
+
+/**
+ * Configuration for creating a sandbox via the high-level SDK.
+ */
 export interface SandboxConfig {
+  /** Unique name for the sandbox */
   name: string;
-  serverUrl?: string; // default: "http://127.0.0.1:8080"
+  /** Server URL (default: "http://127.0.0.1:8080") */
+  serverUrl?: string;
+  /** Host mounts to attach */
   mounts?: MountSpec[];
+  /** Port mappings (host:guest) */
   ports?: PortSpec[];
+  /** VM resource configuration */
   resources?: ResourceSpec;
-  restartPolicy?: RestartPolicy; // For persistent VMs (future)
-  healthCheck?: HealthCheckConfig; // For health monitoring (future)
 }
 
-// ============================================================================
-// Restart Policy (for persistent VMs - future feature)
-// ============================================================================
-
-export type RestartPolicyType = "always" | "on-failure" | "never";
-
-export interface RestartPolicy {
-  policy: RestartPolicyType;
-  maxRestarts?: number; // default: 5
-  restartDelayMs?: number; // default: 1000
-}
-
-// ============================================================================
-// Health Check (future feature)
-// ============================================================================
-
-export interface HealthCheckConfig {
-  command: string[];
-  intervalSecs?: number; // default: 30
-  timeoutSecs?: number; // default: 5
-  retries?: number; // default: 3
-}
-
-export type HealthStatus = "healthy" | "unhealthy" | "starting" | "none";
-
-export interface HealthInfo {
-  status: HealthStatus;
-  lastCheck?: string; // ISO timestamp
-}
-
-export interface MountSpec {
-  source: string; // Host path
-  target: string; // Sandbox path
-  readonly?: boolean; // default: false
-}
-
-export interface PortSpec {
-  host: number;
-  guest: number;
-}
-
-export interface ResourceSpec {
-  cpus?: number; // default: 1
-  memoryMb?: number; // default: 256
-}
-
-// ============================================================================
-// API Request Types
-// ============================================================================
-
-export interface CreateSandboxRequest {
-  name: string;
-  mounts?: MountSpec[];
-  ports?: PortSpec[];
-  resources?: ResourceSpec;
-  restart_policy?: RestartPolicy; // Future
-  health_check?: HealthCheckConfig; // Future
-}
-
-export interface ExecRequest {
-  command: string[];
-  env?: EnvVar[];
-  workdir?: string;
-  timeout_secs?: number;
-}
-
-export interface RunRequest {
-  image: string;
-  command: string[];
-  env?: EnvVar[];
-  workdir?: string;
-  timeout_secs?: number;
-}
-
-export interface EnvVar {
-  name: string;
-  value: string;
-}
-
-export interface CreateContainerRequest {
-  image: string;
-  command?: string[];
-  env?: EnvVar[];
-  workdir?: string;
-  mounts?: ContainerMountSpec[];
-}
-
-export interface ContainerMountSpec {
-  source: string; // Virtiofs tag (e.g., "smolvm0")
-  target: string;
-  readonly?: boolean;
-}
-
-export interface ContainerExecRequest {
-  command: string[];
-  env?: EnvVar[];
-  workdir?: string;
-  timeout_secs?: number;
-}
-
-export interface StopContainerRequest {
-  timeout_secs?: number;
-}
-
-export interface DeleteContainerRequest {
-  force?: boolean;
-}
-
-export interface PullImageRequest {
-  image: string;
-  platform?: string;
-}
-
-export interface LogsQuery {
-  follow?: boolean;
-  tail?: number;
-}
-
-// ============================================================================
-// API Response Types
-// ============================================================================
-
-export interface HealthResponse {
-  status: string;
-  version: string;
-}
-
-export interface SandboxInfo {
-  name: string;
-  state: SandboxState;
-  pid?: number;
-  mounts: MountInfo[];
-  ports: PortSpec[];
-  resources: ResourceSpec;
-  // Service features (future)
-  uptimeSecs?: number;
-  restartCount?: number;
-  health?: HealthInfo;
-  restartPolicy?: RestartPolicy;
-}
-
+/**
+ * Sandbox state.
+ */
 export type SandboxState = "created" | "running" | "stopped";
 
-export interface MountInfo {
-  tag: string; // "smolvm0", "smolvm1", etc.
-  source: string;
-  target: string;
-  readonly: boolean;
-}
-
-export interface ListSandboxesResponse {
-  sandboxes: SandboxInfo[];
-}
-
-export interface ExecResponse {
-  exit_code: number;
-  stdout: string;
-  stderr: string;
-}
-
-export interface ContainerInfo {
-  id: string;
-  image: string;
-  state: ContainerState;
-  created_at: number;
-  command: string[];
-}
-
+/**
+ * Container state.
+ */
 export type ContainerState = "created" | "running" | "stopped";
 
-export interface ListContainersResponse {
-  containers: ContainerInfo[];
-}
-
-export interface ImageInfo {
-  reference: string;
-  digest: string;
-  size: number;
-  architecture: string;
-  os: string;
-  layer_count: number;
-}
-
-export interface ListImagesResponse {
-  images: ImageInfo[];
-}
-
-export interface PullImageResponse {
-  image: ImageInfo;
-}
-
-export interface DeleteResponse {
-  deleted: string;
-}
-
-export interface ApiErrorResponse {
-  error: string;
-  code: string;
-}
-
 // ============================================================================
-// SDK-specific Types
+// SDK Execution Options
 // ============================================================================
 
+/**
+ * Options for command execution.
+ */
 export interface ExecOptions {
+  /** Environment variables as key-value pairs */
   env?: Record<string, string>;
+  /** Working directory for the command */
   workdir?: string;
-  timeout?: number; // seconds
+  /** Timeout in seconds */
+  timeout?: number;
 }
 
+/**
+ * Options for log streaming.
+ */
 export interface LogsOptions {
+  /** Follow the logs (like tail -f) */
   follow?: boolean;
+  /** Number of lines to show from the end */
   tail?: number;
 }
 
+/**
+ * Options for creating a container.
+ */
 export interface ContainerOptions {
+  /** OCI image to use */
   image: string;
+  /** Command and arguments */
   command?: string[];
+  /** Environment variables as key-value pairs */
   env?: Record<string, string>;
+  /** Working directory */
   workdir?: string;
+  /** Volume mounts using virtiofs tags */
   mounts?: Array<{
-    tag: string; // "smolvm0", etc.
+    /** Virtiofs tag (e.g., "smolvm0") */
+    tag: string;
+    /** Target path in container */
     target: string;
+    /** Read-only mount */
     readonly?: boolean;
   }>;
 }
 
+/**
+ * Options for code execution (extends ExecOptions).
+ */
 export interface CodeOptions extends ExecOptions {
-  image?: string; // Override default image
+  /** Override default image */
+  image?: string;
 }
+
+// ============================================================================
+// Legacy Type Aliases (for backwards compatibility)
+// ============================================================================
+
+// These type aliases exist for backwards compatibility with code that uses
+// the old snake_case naming convention for SDK-specific types.
+
+/** @deprecated Use RestartSpec from generated types */
+export type RestartPolicy = {
+  policy: "always" | "on-failure" | "never" | "unless-stopped";
+  max_retries?: number;
+};
+
+/** @deprecated Use HealthResponse from generated types */
+export interface HealthCheckConfig {
+  command: string[];
+  intervalSecs?: number;
+  timeoutSecs?: number;
+  retries?: number;
+}
+
+/** @deprecated */
+export type HealthStatus = "healthy" | "unhealthy" | "starting" | "none";
+
+/** @deprecated */
+export interface HealthInfo {
+  status: HealthStatus;
+  lastCheck?: string;
+}
+
+/** @deprecated Use RestartPolicyType instead */
+export type RestartPolicyType = "always" | "on-failure" | "never";
