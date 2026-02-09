@@ -67,7 +67,7 @@ All SDKs provide:
 ## Requirements
 
 - smolvm server running (default: `http://127.0.0.1:8080`)
-- macOS with Apple Silicon (Linux support coming soon)
+- macOS with Apple Silicon, or Linux with KVM support
 
 ## API Consistency
 

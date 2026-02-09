@@ -1,0 +1,20 @@
+# Node
+smolvm-node/node_modules/
+smolvm-node/dist/
+
+# Node - generated from OpenAPI (regenerate with scripts/generate-sdks.sh)
+smolvm-node/src/generated/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+smolvm-python/dist/
+smolvm-python/build/
+.pytest_cache/
+
+# Python - generated from OpenAPI (regenerate with scripts/generate-sdks.sh)
+smolvm-python/smolvm/generated/
+
+# openapi-generator
+smolvm-node/openapitools.json
