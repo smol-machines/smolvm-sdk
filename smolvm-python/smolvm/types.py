@@ -1,8 +1,30 @@
-"""Type definitions for the smolvm SDK."""
+"""Type definitions for the smolvm SDK.
+
+API types are re-exported from the generated OpenAPI models.
+SDK-specific types (helper configs, options) are defined here.
+"""
 
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+
+# Re-export generated API types
+from smolvm.generated import (
+    ContainerInfo as GeneratedContainerInfo,
+    ImageInfo as GeneratedImageInfo,
+    MicrovmInfo as GeneratedMicrovmInfo,
+    MountInfo as GeneratedMountInfo,
+    MountSpec as GeneratedMountSpec,
+    PortSpec as GeneratedPortSpec,
+    ResourceSpec as GeneratedResourceSpec,
+    SandboxInfo as GeneratedSandboxInfo,
+    ExecResponse,
+    HealthResponse,
+)
+
+# ============================================================================
+# SDK-specific Enums (for ergonomic access to state values)
+# ============================================================================
 
 
 class SandboxState(str, Enum):
@@ -19,6 +41,19 @@ class ContainerState(str, Enum):
     CREATED = "created"
     RUNNING = "running"
     STOPPED = "stopped"
+
+
+class MicrovmState(str, Enum):
+    """State of a microvm."""
+
+    CREATED = "created"
+    RUNNING = "running"
+    STOPPED = "stopped"
+
+
+# ============================================================================
+# SDK-specific Types (not in API, for convenience)
+# ============================================================================
 
 
 @dataclass
@@ -40,10 +75,14 @@ class PortSpec:
 
 @dataclass
 class ResourceSpec:
-    """Resource allocation specification."""
+    """Resource allocation specification.
 
-    cpus: int = 1
-    memory_mb: int = 256
+    All fields are optional — the server applies its own defaults when omitted.
+    """
+
+    cpus: Optional[int] = None
+    memory_mb: Optional[int] = None
+    network: Optional[bool] = None
 
 
 @dataclass
@@ -65,8 +104,8 @@ class SandboxInfo:
     mounts: list[MountInfo]
     ports: list[PortSpec]
     resources: ResourceSpec
+    network: bool  # Whether outbound network access is enabled
     pid: Optional[int] = None
-    uptime_secs: Optional[int] = None
     restart_count: Optional[int] = None
 
     @classmethod
@@ -84,8 +123,9 @@ class SandboxInfo:
         ports = [PortSpec(host=p["host"], guest=p["guest"]) for p in data.get("ports", [])]
         resources_data = data.get("resources", {})
         resources = ResourceSpec(
-            cpus=resources_data.get("cpus", 1),
-            memory_mb=resources_data.get("memoryMb", 256),
+            cpus=resources_data.get("cpus"),
+            memory_mb=resources_data.get("memory_mb"),
+            network=resources_data.get("network"),
         )
         return cls(
             name=data["name"],
@@ -93,9 +133,9 @@ class SandboxInfo:
             mounts=mounts,
             ports=ports,
             resources=resources,
+            network=data.get("network", False),
             pid=data.get("pid"),
-            uptime_secs=data.get("uptimeSecs"),
-            restart_count=data.get("restartCount"),
+            restart_count=data.get("restart_count"),
         )
 
 
@@ -146,6 +186,41 @@ class ImageInfo:
 
 
 @dataclass
+class MicrovmInfo:
+    """Information about a microvm."""
+
+    name: str
+    state: MicrovmState
+    cpus: int
+    memory_mb: int
+    pid: Optional[int]
+    mounts: int
+    ports: int
+    network: bool  # Whether outbound network access is enabled
+    created_at: str
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "MicrovmInfo":
+        """Create MicrovmInfo from API response dict."""
+        return cls(
+            name=data["name"],
+            state=MicrovmState(data["state"]),
+            cpus=data["cpus"],
+            memory_mb=data["memoryMb"],
+            pid=data.get("pid"),
+            mounts=data["mounts"],
+            ports=data["ports"],
+            network=data.get("network", False),
+            created_at=data["created_at"],
+        )
+
+
+# ============================================================================
+# SDK Helper Types
+# ============================================================================
+
+
+@dataclass
 class ExecOptions:
     """Options for command execution."""
 
@@ -163,6 +238,7 @@ class SandboxConfig:
     mounts: list[MountSpec] = field(default_factory=list)
     ports: list[PortSpec] = field(default_factory=list)
     resources: Optional[ResourceSpec] = None
+    network: bool = False  # Enable outbound network access (TCP/UDP only, not ICMP)
 
 
 @dataclass
@@ -183,3 +259,19 @@ class ContainerOptions:
     env: Optional[dict[str, str]] = None
     workdir: Optional[str] = None
     mounts: Optional[list[ContainerMountSpec]] = None
+
+
+# ============================================================================
+# Re-exported Generated Types (for API compatibility validation)
+# ============================================================================
+
+# These are the Pydantic models from the generated OpenAPI code.
+# They can be used for strict validation or when Pydantic integration is needed.
+GeneratedSandboxInfo = GeneratedSandboxInfo
+GeneratedContainerInfo = GeneratedContainerInfo
+GeneratedImageInfo = GeneratedImageInfo
+GeneratedMicrovmInfo = GeneratedMicrovmInfo
+GeneratedMountInfo = GeneratedMountInfo
+GeneratedMountSpec = GeneratedMountSpec
+GeneratedPortSpec = GeneratedPortSpec
+GeneratedResourceSpec = GeneratedResourceSpec

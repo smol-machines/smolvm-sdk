@@ -6,7 +6,7 @@ from urllib.parse import quote
 import httpx
 
 from .errors import ConnectionError, SmolvmError, TimeoutError, parse_api_error
-from .types import ContainerInfo, ImageInfo, MountSpec, PortSpec, ResourceSpec, SandboxInfo
+from .types import ContainerInfo, ImageInfo, MicrovmInfo, MountSpec, PortSpec, ResourceSpec, SandboxInfo
 
 DEFAULT_TIMEOUT = 30.0  # seconds
 
@@ -105,8 +105,20 @@ class SmolvmClient:
         mounts: Optional[list[MountSpec]] = None,
         ports: Optional[list[PortSpec]] = None,
         resources: Optional[ResourceSpec] = None,
+        network: bool = False,
     ) -> SandboxInfo:
-        """Create a new sandbox."""
+        """Create a new sandbox.
+
+        Args:
+            name: Unique name for the sandbox
+            mounts: Host mounts to attach
+            ports: Port mappings (host:guest)
+            resources: VM resource configuration (cpus, memory)
+            network: Enable outbound network access (TCP/UDP only, not ICMP)
+
+        Returns:
+            SandboxInfo with the created sandbox details
+        """
         body: dict[str, Any] = {"name": name}
 
         if mounts:
@@ -117,8 +129,20 @@ class SmolvmClient:
         if ports:
             body["ports"] = [{"host": p.host, "guest": p.guest} for p in ports]
 
-        if resources:
-            body["resources"] = {"cpus": resources.cpus, "memoryMb": resources.memory_mb}
+        if resources or network:
+            res: dict[str, Any] = {}
+            if resources:
+                if resources.cpus is not None:
+                    res["cpus"] = resources.cpus
+                if resources.memory_mb is not None:
+                    res["memory_mb"] = resources.memory_mb
+                if resources.network is not None:
+                    res["network"] = resources.network
+            # Explicit network param overrides resources.network
+            if network:
+                res["network"] = True
+            if res:
+                body["resources"] = res
 
         data = await self._request("POST", "/api/v1/sandboxes", body)
         return SandboxInfo.from_dict(data)
@@ -143,9 +167,17 @@ class SmolvmClient:
         data = await self._request("POST", f"/api/v1/sandboxes/{quote(name, safe='')}/stop")
         return SandboxInfo.from_dict(data)
 
-    async def delete_sandbox(self, name: str) -> None:
-        """Delete a sandbox."""
-        await self._request("DELETE", f"/api/v1/sandboxes/{quote(name, safe='')}")
+    async def delete_sandbox(self, name: str, force: bool = False) -> None:
+        """Delete a sandbox.
+
+        Args:
+            name: Sandbox name
+            force: Force delete even if VM is still running (may orphan the process)
+        """
+        path = f"/api/v1/sandboxes/{quote(name, safe='')}"
+        if force:
+            path += "?force=true"
+        await self._request("DELETE", path)
 
     # =========================================================================
     # Execution
@@ -282,25 +314,32 @@ class SmolvmClient:
         )
         return [ContainerInfo.from_dict(c) for c in data.get("containers", [])]
 
-    async def start_container(self, sandbox: str, container_id: str) -> ContainerInfo:
-        """Start a container."""
+    async def start_container(self, sandbox: str, container_id: str) -> str:
+        """Start a container.
+
+        Returns:
+            The container ID that was started.
+        """
         data = await self._request(
             "POST",
             f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers/{quote(container_id, safe='')}/start",
         )
-        return ContainerInfo.from_dict(data)
+        return data.get("started", container_id)
 
     async def stop_container(
         self, sandbox: str, container_id: str, timeout_secs: Optional[int] = None
-    ) -> ContainerInfo:
-        """Stop a container."""
+    ) -> None:
+        """Stop a container.
+
+        Note: The API returns a simple acknowledgment. Use list_containers()
+        to verify the container state after stopping.
+        """
         body = {"timeout_secs": timeout_secs} if timeout_secs else {}
-        data = await self._request(
+        await self._request(
             "POST",
             f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers/{quote(container_id, safe='')}/stop",
             body,
         )
-        return ContainerInfo.from_dict(data)
 
     async def delete_container(
         self, sandbox: str, container_id: str, force: bool = False
@@ -373,3 +412,92 @@ class SmolvmClient:
             timeout=timeout,
         )
         return ImageInfo.from_dict(data.get("image", data))
+
+    # =========================================================================
+    # MicroVMs
+    # =========================================================================
+
+    async def create_microvm(
+        self,
+        name: str,
+        cpus: int = 1,
+        memory_mb: int = 512,
+        mounts: Optional[list[MountSpec]] = None,
+        ports: Optional[list[PortSpec]] = None,
+        network: bool = False,
+    ) -> MicrovmInfo:
+        """Create a new microvm.
+
+        Args:
+            name: Unique name for the microvm
+            cpus: Number of vCPUs (default: 1)
+            memory_mb: Memory in MiB (default: 512)
+            mounts: Host mounts to attach
+            ports: Port mappings (host:guest)
+            network: Enable outbound network access (TCP/UDP only, not ICMP)
+
+        Returns:
+            MicrovmInfo with the created microvm details
+        """
+        body: dict[str, Any] = {
+            "name": name,
+            "cpus": cpus,
+            "memoryMb": memory_mb,
+            "network": network,
+        }
+        if mounts:
+            body["mounts"] = [
+                {"source": m.source, "target": m.target, "readonly": m.readonly} for m in mounts
+            ]
+        if ports:
+            body["ports"] = [{"host": p.host, "guest": p.guest} for p in ports]
+        data = await self._request("POST", "/api/v1/microvms", body)
+        return MicrovmInfo.from_dict(data)
+
+    async def list_microvms(self) -> list[MicrovmInfo]:
+        """List all microvms."""
+        data = await self._request("GET", "/api/v1/microvms")
+        return [MicrovmInfo.from_dict(m) for m in data.get("microvms", [])]
+
+    async def get_microvm(self, name: str) -> MicrovmInfo:
+        """Get microvm by name."""
+        data = await self._request("GET", f"/api/v1/microvms/{quote(name, safe='')}")
+        return MicrovmInfo.from_dict(data)
+
+    async def start_microvm(self, name: str) -> MicrovmInfo:
+        """Start a microvm."""
+        data = await self._request("POST", f"/api/v1/microvms/{quote(name, safe='')}/start")
+        return MicrovmInfo.from_dict(data)
+
+    async def stop_microvm(self, name: str) -> MicrovmInfo:
+        """Stop a microvm."""
+        data = await self._request("POST", f"/api/v1/microvms/{quote(name, safe='')}/stop")
+        return MicrovmInfo.from_dict(data)
+
+    async def delete_microvm(self, name: str) -> None:
+        """Delete a microvm."""
+        await self._request("DELETE", f"/api/v1/microvms/{quote(name, safe='')}")
+
+    async def exec_microvm(
+        self,
+        name: str,
+        command: list[str],
+        env: Optional[dict[str, str]] = None,
+        workdir: Optional[str] = None,
+        timeout_secs: Optional[int] = None,
+    ) -> dict:
+        """Execute a command in a microvm."""
+        body: dict[str, Any] = {"command": command}
+        if env:
+            body["env"] = [{"name": k, "value": v} for k, v in env.items()]
+        if workdir:
+            body["workdir"] = workdir
+        if timeout_secs:
+            body["timeout_secs"] = timeout_secs
+        http_timeout = (timeout_secs + 10) if timeout_secs else None
+        return await self._request(
+            "POST",
+            f"/api/v1/microvms/{quote(name, safe='')}/exec",
+            body,
+            timeout=http_timeout,
+        )

@@ -258,15 +258,22 @@ class Sandbox:
         """List all containers in the sandbox."""
         return await self.client.list_containers(self.name)
 
-    async def start_container(self, container_id: str) -> ContainerInfo:
-        """Start a container."""
+    async def start_container(self, container_id: str) -> str:
+        """Start a container.
+
+        Returns:
+            The container ID that was started.
+        """
         return await self.client.start_container(self.name, container_id)
 
     async def stop_container(
         self, container_id: str, timeout: Optional[int] = None
-    ) -> ContainerInfo:
-        """Stop a container."""
-        return await self.client.stop_container(self.name, container_id, timeout)
+    ) -> None:
+        """Stop a container.
+
+        Note: Use list_containers() to verify the container state after stopping.
+        """
+        await self.client.stop_container(self.name, container_id, timeout)
 
     async def delete_container(self, container_id: str, force: bool = False) -> None:
         """Delete a container."""
