@@ -397,13 +397,13 @@ class SmolvmClient:
         self,
         sandbox: str,
         image: str,
-        platform: Optional[str] = None,
+        oci_platform: Optional[str] = None,
         timeout: float = 300.0,  # 5 minutes default for pulls
     ) -> ImageInfo:
         """Pull an image into a sandbox."""
         body: dict[str, Any] = {"image": image}
-        if platform:
-            body["platform"] = platform
+        if oci_platform:
+            body["oci_platform"] = oci_platform
 
         data = await self._request(
             "POST",

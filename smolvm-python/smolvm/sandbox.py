@@ -307,10 +307,10 @@ class Sandbox:
         return await self.client.list_images(self.name)
 
     async def pull_image(
-        self, image: str, platform: Optional[str] = None
+        self, image: str, oci_platform: Optional[str] = None
     ) -> ImageInfo:
         """Pull an image into the sandbox."""
-        return await self.client.pull_image(self.name, image, platform)
+        return await self.client.pull_image(self.name, image, oci_platform)
 
 
 # =============================================================================
