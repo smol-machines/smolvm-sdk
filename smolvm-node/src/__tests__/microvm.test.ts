@@ -2,7 +2,7 @@
  * E2E tests for MicroVM functionality.
  *
  * These tests require a running smolvm server.
- * Start with: smolvm serve --listen 127.0.0.1:8080
+ * Start with: smolvm serve start --listen 127.0.0.1:8080
  */
 
 import { describe, it, expect, beforeAll, afterEach } from "vitest";

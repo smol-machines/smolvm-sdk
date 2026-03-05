@@ -40,7 +40,7 @@ export async function requireServer(): Promise<void> {
   if (!running) {
     throw new Error(
       `smolvm server not running at ${TEST_SERVER_URL}. ` +
-        `Start it with: smolvm serve --listen 127.0.0.1:8080`
+        `Start it with: smolvm serve start --listen 127.0.0.1:8080`
     );
   }
 }

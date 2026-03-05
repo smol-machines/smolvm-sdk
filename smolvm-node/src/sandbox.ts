@@ -255,8 +255,8 @@ export class Sandbox implements ContainerParent {
   /**
    * Pull an image into the sandbox.
    */
-  async pullImage(image: string, platform?: string): Promise<ImageInfo> {
-    return this.client.pullImage(this.name, { image, platform });
+  async pullImage(image: string, ociPlatform?: string): Promise<ImageInfo> {
+    return this.client.pullImage(this.name, { image, ociPlatform });
   }
 }
 
