@@ -9,7 +9,7 @@ import type {
 
 /**
  * Minimal interface for what Container needs from its parent.
- * This avoids circular dependency issues with Sandbox.
+ * This avoids circular dependency issues with Machine.
  */
 export interface ContainerParent {
   readonly name: string;
@@ -17,7 +17,7 @@ export interface ContainerParent {
 }
 
 /**
- * Container abstraction for managing containers within a sandbox.
+ * Container abstraction for managing containers within a machine.
  */
 export class Container {
   readonly id: string;
@@ -121,9 +121,7 @@ export class Container {
    * Get the container creation timestamp.
    */
   get createdAt(): number {
-    // Note: API returns snake_case but generated types use camelCase
-    // We access the raw response with snake_case since client doesn't transform
-    return (this._info as any).created_at ?? this._info.createdAt;
+    return this._info.createdAt;
   }
 
   /**

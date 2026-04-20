@@ -2,9 +2,9 @@ import { SmolvmClient } from "./client.js";
 import { Container, type ContainerParent } from "./container.js";
 import { ExecResult } from "./execution.js";
 import type {
-  SandboxConfig,
-  SandboxInfo,
-  SandboxState,
+  MachineConfig,
+  MachineInfo,
+  MachineState,
   MountInfo,
   ExecOptions,
   LogsOptions,
@@ -17,29 +17,29 @@ import type {
 const DEFAULT_SERVER_URL = "http://127.0.0.1:8080";
 
 /**
- * High-level sandbox abstraction for managing microVM sandboxes.
+ * High-level machine abstraction for managing microVM machines.
  */
-export class Sandbox implements ContainerParent {
+export class Machine implements ContainerParent {
   readonly name: string;
   readonly client: SmolvmClient;
 
-  private config: SandboxConfig;
-  private _info?: SandboxInfo;
+  private config: MachineConfig;
+  private _info?: MachineInfo;
   private _started: boolean = false;
 
-  constructor(config: SandboxConfig) {
+  constructor(config: MachineConfig) {
     this.name = config.name;
     this.config = config;
     this.client = new SmolvmClient(config.serverUrl || DEFAULT_SERVER_URL);
   }
 
   /**
-   * Create a new sandbox and start it.
+   * Create a new machine and start it.
    */
-  static async create(config: SandboxConfig): Promise<Sandbox> {
-    const sandbox = new Sandbox(config);
-    await sandbox.start();
-    return sandbox;
+  static async create(config: MachineConfig): Promise<Machine> {
+    const machine = new Machine(config);
+    await machine.start();
+    return machine;
   }
 
   // =========================================================================
@@ -47,44 +47,44 @@ export class Sandbox implements ContainerParent {
   // =========================================================================
 
   /**
-   * Create and start the sandbox.
-   * If the sandbox already exists, it will be started if not already running.
+   * Create and start the machine.
+   * If the machine already exists, it will be started if not already running.
    */
   async start(): Promise<void> {
     if (this._started) {
       return;
     }
 
-    // Create the sandbox
-    this._info = await this.client.createSandbox({
+    // Create the machine
+    this._info = await this.client.createMachine({
       name: this.config.name,
       mounts: this.config.mounts,
       ports: this.config.ports,
       resources: this.config.resources,
     });
 
-    // Start the sandbox
-    this._info = await this.client.startSandbox(this.name);
+    // Start the machine
+    this._info = await this.client.startMachine(this.name);
     this._started = true;
   }
 
   /**
-   * Stop the sandbox.
+   * Stop the machine.
    */
   async stop(): Promise<void> {
     if (!this._started) {
       return;
     }
 
-    this._info = await this.client.stopSandbox(this.name);
+    this._info = await this.client.stopMachine(this.name);
     this._started = false;
   }
 
   /**
-   * Delete the sandbox.
+   * Delete the machine.
    */
   async delete(): Promise<void> {
-    await this.client.deleteSandbox(this.name);
+    await this.client.deleteMachine(this.name);
     this._info = undefined;
     this._started = false;
   }
@@ -94,38 +94,38 @@ export class Sandbox implements ContainerParent {
   // =========================================================================
 
   /**
-   * Get the current sandbox status.
+   * Get the current machine status.
    */
-  async status(): Promise<SandboxInfo> {
-    this._info = await this.client.getSandbox(this.name);
+  async status(): Promise<MachineInfo> {
+    this._info = await this.client.getMachine(this.name);
     return this._info;
   }
 
   /**
-   * Whether the sandbox has been started.
+   * Whether the machine has been started.
    */
   get isStarted(): boolean {
     return this._started;
   }
 
   /**
-   * Get the current sandbox state.
+   * Get the current machine state.
    */
-  get state(): SandboxState | undefined {
-    return this._info?.state as SandboxState | undefined;
+  get state(): MachineState | undefined {
+    return this._info?.state as MachineState | undefined;
   }
 
   /**
-   * Get the sandbox mounts.
+   * Get the machine mounts.
    */
   get mounts(): MountInfo[] {
     return this._info?.mounts || [];
   }
 
   /**
-   * Get the raw sandbox info.
+   * Get the raw machine info.
    */
-  get info(): SandboxInfo | undefined {
+  get info(): MachineInfo | undefined {
     return this._info;
   }
 
@@ -134,7 +134,7 @@ export class Sandbox implements ContainerParent {
   // =========================================================================
 
   /**
-   * Execute a command directly in the sandbox VM.
+   * Execute a command directly in the machine VM.
    */
   async exec(command: string[], options?: ExecOptions): Promise<ExecResult> {
     const env: EnvVar[] | undefined = options?.env
@@ -152,7 +152,7 @@ export class Sandbox implements ContainerParent {
   }
 
   /**
-   * Run a command in a container image within the sandbox.
+   * Run a command in a container image within the machine.
    */
   async run(
     image: string,
@@ -179,7 +179,7 @@ export class Sandbox implements ContainerParent {
   // =========================================================================
 
   /**
-   * Stream logs from the sandbox.
+   * Stream logs from the machine.
    */
   logs(options?: LogsOptions): AsyncIterable<string> {
     return this.client.streamLogs(this.name, {
@@ -193,7 +193,7 @@ export class Sandbox implements ContainerParent {
   // =========================================================================
 
   /**
-   * Create a container in the sandbox.
+   * Create a container in the machine.
    */
   async createContainer(options: ContainerOptions): Promise<Container> {
     const env: EnvVar[] | undefined = options.env
@@ -220,7 +220,7 @@ export class Sandbox implements ContainerParent {
   }
 
   /**
-   * List all containers in the sandbox.
+   * List all containers in the machine.
    */
   async listContainers(): Promise<Container[]> {
     const containers = await this.client.listContainers(this.name);
@@ -246,14 +246,14 @@ export class Sandbox implements ContainerParent {
   // =========================================================================
 
   /**
-   * List all images in the sandbox.
+   * List all images in the machine.
    */
   async listImages(): Promise<ImageInfo[]> {
     return this.client.listImages(this.name);
   }
 
   /**
-   * Pull an image into the sandbox.
+   * Pull an image into the machine.
    */
   async pullImage(image: string, ociPlatform?: string): Promise<ImageInfo> {
     return this.client.pullImage(this.name, { image, ociPlatform });
@@ -265,24 +265,24 @@ export class Sandbox implements ContainerParent {
 // =============================================================================
 
 /**
- * Create a sandbox, run a function with it, and clean up afterwards.
- * This is the recommended way to use sandboxes for short-lived tasks.
+ * Create a machine, run a function with it, and clean up afterwards.
+ * This is the recommended way to use machines for short-lived tasks.
  */
-export async function withSandbox<T>(
-  config: SandboxConfig,
-  fn: (sandbox: Sandbox) => Promise<T>
+export async function withMachine<T>(
+  config: MachineConfig,
+  fn: (machine: Machine) => Promise<T>
 ): Promise<T> {
-  const sandbox = await Sandbox.create(config);
+  const machine = await Machine.create(config);
   try {
-    return await fn(sandbox);
+    return await fn(machine);
   } finally {
     try {
-      await sandbox.stop();
+      await machine.stop();
     } catch {
       // Ignore stop errors during cleanup
     }
     try {
-      await sandbox.delete();
+      await machine.delete();
     } catch {
       // Ignore delete errors during cleanup
     }
@@ -290,13 +290,13 @@ export async function withSandbox<T>(
 }
 
 /**
- * Quick execution helper - creates a temporary sandbox, runs a command, and cleans up.
+ * Quick execution helper - creates a temporary machine, runs a command, and cleans up.
  */
 export async function quickExec(
   command: string[],
-  options?: SandboxConfig & ExecOptions
+  options?: MachineConfig & ExecOptions
 ): Promise<ExecResult> {
-  const config: SandboxConfig = {
+  const config: MachineConfig = {
     name: options?.name || `quick-exec-${Date.now()}`,
     serverUrl: options?.serverUrl,
     mounts: options?.mounts,
@@ -304,8 +304,8 @@ export async function quickExec(
     resources: options?.resources,
   };
 
-  return withSandbox(config, async (sandbox) => {
-    return sandbox.exec(command, {
+  return withMachine(config, async (machine) => {
+    return machine.exec(command, {
       env: options?.env,
       workdir: options?.workdir,
       timeout: options?.timeout,
@@ -314,14 +314,14 @@ export async function quickExec(
 }
 
 /**
- * Quick run helper - creates a temporary sandbox, runs in an image, and cleans up.
+ * Quick run helper - creates a temporary machine, runs in an image, and cleans up.
  */
 export async function quickRun(
   image: string,
   command: string[],
-  options?: SandboxConfig & ExecOptions
+  options?: MachineConfig & ExecOptions
 ): Promise<ExecResult> {
-  const config: SandboxConfig = {
+  const config: MachineConfig = {
     name: options?.name || `quick-run-${Date.now()}`,
     serverUrl: options?.serverUrl,
     mounts: options?.mounts,
@@ -329,8 +329,8 @@ export async function quickRun(
     resources: options?.resources,
   };
 
-  return withSandbox(config, async (sandbox) => {
-    return sandbox.run(image, command, {
+  return withMachine(config, async (machine) => {
+    return machine.run(image, command, {
       env: options?.env,
       workdir: options?.workdir,
       timeout: options?.timeout,

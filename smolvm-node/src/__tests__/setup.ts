@@ -3,7 +3,7 @@
  */
 
 import { SmolvmClient } from "../client.js";
-import { Sandbox } from "../sandbox.js";
+import { Machine } from "../machine.js";
 import { ConnectionError } from "../errors.js";
 
 // Default test server URL
@@ -46,13 +46,13 @@ export async function requireServer(): Promise<void> {
 }
 
 /**
- * Ensure the test image is pulled in the given sandbox.
- * Images are per-sandbox, so we need to check and pull for each sandbox.
+ * Ensure the test image is pulled in the given machine.
+ * Images are per-machine, so we need to check and pull for each machine.
  */
-export async function ensureTestImage(sandbox: Sandbox): Promise<void> {
-  // Check if image already exists in this sandbox
+export async function ensureTestImage(machine: Machine): Promise<void> {
+  // Check if image already exists in this machine
   try {
-    const images = await sandbox.listImages();
+    const images = await machine.listImages();
     const hasImage = images.some(
       (img) => img.reference === TEST_IMAGE || img.reference.startsWith("alpine:")
     );
@@ -65,7 +65,7 @@ export async function ensureTestImage(sandbox: Sandbox): Promise<void> {
 
   // Pull the image
   try {
-    await sandbox.pullImage(TEST_IMAGE);
+    await machine.pullImage(TEST_IMAGE);
   } catch (error) {
     // Image might already exist, which is fine
     const message = error instanceof Error ? error.message : String(error);
@@ -76,76 +76,76 @@ export async function ensureTestImage(sandbox: Sandbox): Promise<void> {
 }
 
 /**
- * Generate a unique sandbox name for testing.
+ * Generate a unique machine name for testing.
  */
-export function uniqueSandboxName(prefix: string = "test"): string {
+export function uniqueMachineName(prefix: string = "test"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /**
- * Helper to create a sandbox and ensure cleanup.
- * Returns the sandbox and a cleanup function.
+ * Helper to create a machine and ensure cleanup.
+ * Returns the machine and a cleanup function.
  */
-export async function createTestSandbox(
+export async function createTestMachine(
   name?: string
-): Promise<{ sandbox: Sandbox; cleanup: () => Promise<void> }> {
-  const sandboxName = name || uniqueSandboxName();
-  const sandbox = await Sandbox.create({
-    name: sandboxName,
+): Promise<{ machine: Machine; cleanup: () => Promise<void> }> {
+  const machineName = name || uniqueMachineName();
+  const machine = await Machine.create({
+    name: machineName,
     serverUrl: TEST_SERVER_URL,
   });
 
   const cleanup = async () => {
     try {
-      await sandbox.stop();
+      await machine.stop();
     } catch {
       // Ignore stop errors
     }
     try {
-      await sandbox.delete();
+      await machine.delete();
     } catch {
       // Ignore delete errors
     }
   };
 
-  return { sandbox, cleanup };
+  return { machine, cleanup };
 }
 
 /**
- * Track sandboxes created during a test for cleanup.
+ * Track machines created during a test for cleanup.
  */
-export class SandboxTracker {
-  private sandboxes: Sandbox[] = [];
+export class MachineTracker {
+  private machines: Machine[] = [];
 
   /**
-   * Create and track a sandbox.
+   * Create and track a machine.
    */
-  async create(name?: string): Promise<Sandbox> {
-    const sandboxName = name || uniqueSandboxName();
-    const sandbox = await Sandbox.create({
-      name: sandboxName,
+  async create(name?: string): Promise<Machine> {
+    const machineName = name || uniqueMachineName();
+    const machine = await Machine.create({
+      name: machineName,
       serverUrl: TEST_SERVER_URL,
     });
-    this.sandboxes.push(sandbox);
-    return sandbox;
+    this.machines.push(machine);
+    return machine;
   }
 
   /**
-   * Clean up all tracked sandboxes.
+   * Clean up all tracked machines.
    */
   async cleanup(): Promise<void> {
-    for (const sandbox of this.sandboxes) {
+    for (const machine of this.machines) {
       try {
-        await sandbox.stop();
+        await machine.stop();
       } catch {
         // Ignore
       }
       try {
-        await sandbox.delete();
+        await machine.delete();
       } catch {
         // Ignore
       }
     }
-    this.sandboxes = [];
+    this.machines = [];
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "smolvm",
   "version": "0.1.0",
-  "description": "TypeScript SDK for smolvm microVM sandbox management",
+  "description": "TypeScript SDK for smolvm microVM machine management",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -39,7 +39,7 @@
   },
   "keywords": [
     "smolvm",
-    "sandbox",
+    "machine",
     "microvm",
     "container",
     "isolation"

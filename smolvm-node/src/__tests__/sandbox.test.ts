@@ -1,24 +1,24 @@
 /**
- * E2E tests for Sandbox functionality.
+ * E2E tests for Machine functionality.
  *
  * These tests require a running smolvm server.
  * Start with: smolvm serve start --listen 127.0.0.1:8080
  */
 
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
-import { Sandbox, withSandbox, quickExec } from "../sandbox.js";
+import { Machine, withMachine, quickExec } from "../machine.js";
 import { NotFoundError, ConflictError } from "../errors.js";
 import {
   requireServer,
-  uniqueSandboxName,
-  SandboxTracker,
+  uniqueMachineName,
+  MachineTracker,
   TEST_SERVER_URL,
   TEST_IMAGE,
   ensureTestImage,
 } from "./setup.js";
 
-describe("Sandbox E2E Tests", () => {
-  const tracker = new SandboxTracker();
+describe("Machine E2E Tests", () => {
+  const tracker = new MachineTracker();
 
   beforeAll(async () => {
     await requireServer();
@@ -28,56 +28,56 @@ describe("Sandbox E2E Tests", () => {
     await tracker.cleanup();
   });
 
-  describe("Sandbox Lifecycle", () => {
-    it("should create, start, stop, and delete a sandbox", async () => {
-      const name = uniqueSandboxName("lifecycle");
-      const sandbox = new Sandbox({ name, serverUrl: TEST_SERVER_URL });
+  describe("Machine Lifecycle", () => {
+    it("should create, start, stop, and delete a machine", async () => {
+      const name = uniqueMachineName("lifecycle");
+      const machine = new Machine({ name, serverUrl: TEST_SERVER_URL });
 
-      await sandbox.start();
-      expect(sandbox.isStarted).toBe(true);
-      expect(sandbox.state).toBe("running");
+      await machine.start();
+      expect(machine.isStarted).toBe(true);
+      expect(machine.state).toBe("running");
 
-      const status = await sandbox.status();
+      const status = await machine.status();
       expect(status.name).toBe(name);
       expect(status.state).toBe("running");
 
-      await sandbox.stop();
-      expect(sandbox.isStarted).toBe(false);
+      await machine.stop();
+      expect(machine.isStarted).toBe(false);
 
-      await sandbox.delete();
-      await expect(sandbox.status()).rejects.toThrow(NotFoundError);
+      await machine.delete();
+      await expect(machine.status()).rejects.toThrow(NotFoundError);
     });
 
     it("should handle idempotent start and stop", async () => {
-      const name = uniqueSandboxName("idempotent");
-      const sandbox = new Sandbox({ name, serverUrl: TEST_SERVER_URL });
+      const name = uniqueMachineName("idempotent");
+      const machine = new Machine({ name, serverUrl: TEST_SERVER_URL });
 
-      await sandbox.start();
-      await sandbox.start(); // Second start is no-op
-      expect(sandbox.isStarted).toBe(true);
+      await machine.start();
+      await machine.start(); // Second start is no-op
+      expect(machine.isStarted).toBe(true);
 
-      await sandbox.stop();
-      await sandbox.stop(); // Second stop is no-op
-      expect(sandbox.isStarted).toBe(false);
+      await machine.stop();
+      await machine.stop(); // Second stop is no-op
+      expect(machine.isStarted).toBe(false);
 
-      await sandbox.delete();
+      await machine.delete();
     });
 
-    it("should reject duplicate sandbox names", async () => {
-      const name = uniqueSandboxName("duplicate");
-      const sandbox1 = await tracker.create(name);
-      expect(sandbox1.isStarted).toBe(true);
+    it("should reject duplicate machine names", async () => {
+      const name = uniqueMachineName("duplicate");
+      const machine1 = await tracker.create(name);
+      expect(machine1.isStarted).toBe(true);
 
-      const sandbox2 = new Sandbox({ name, serverUrl: TEST_SERVER_URL });
-      await expect(sandbox2.start()).rejects.toThrow(ConflictError);
+      const machine2 = new Machine({ name, serverUrl: TEST_SERVER_URL });
+      await expect(machine2.start()).rejects.toThrow(ConflictError);
     });
   });
 
-  describe("Sandbox Execution", () => {
+  describe("Machine Execution", () => {
     it("should execute a simple command", async () => {
-      const sandbox = await tracker.create();
+      const machine = await tracker.create();
 
-      const result = await sandbox.exec(["echo", "hello world"]);
+      const result = await machine.exec(["echo", "hello world"]);
 
       expect(result.stdout.trim()).toBe("hello world");
       expect(result.stderr).toBe("");
@@ -86,63 +86,63 @@ describe("Sandbox E2E Tests", () => {
     });
 
     it("should capture exit codes", async () => {
-      const sandbox = await tracker.create();
+      const machine = await tracker.create();
 
-      expect((await sandbox.exec(["true"])).exitCode).toBe(0);
-      expect((await sandbox.exec(["false"])).exitCode).toBe(1);
-      expect((await sandbox.exec(["sh", "-c", "exit 42"])).exitCode).toBe(42);
+      expect((await machine.exec(["true"])).exitCode).toBe(0);
+      expect((await machine.exec(["false"])).exitCode).toBe(1);
+      expect((await machine.exec(["sh", "-c", "exit 42"])).exitCode).toBe(42);
     });
 
     it("should capture stderr", async () => {
-      const sandbox = await tracker.create();
+      const machine = await tracker.create();
 
-      const result = await sandbox.exec(["sh", "-c", "echo error >&2"]);
+      const result = await machine.exec(["sh", "-c", "echo error >&2"]);
 
       expect(result.stdout).toBe("");
       expect(result.stderr.trim()).toBe("error");
     });
 
     it("should support env vars and workdir", async () => {
-      const sandbox = await tracker.create();
+      const machine = await tracker.create();
 
       // Env vars
-      const envResult = await sandbox.exec(["sh", "-c", "echo $VAR1-$VAR2"], {
+      const envResult = await machine.exec(["sh", "-c", "echo $VAR1-$VAR2"], {
         env: { VAR1: "one", VAR2: "two" },
       });
       expect(envResult.stdout.trim()).toBe("one-two");
 
       // Workdir
-      const wdResult = await sandbox.exec(["pwd"], { workdir: "/tmp" });
+      const wdResult = await machine.exec(["pwd"], { workdir: "/tmp" });
       expect(wdResult.stdout.trim()).toBe("/tmp");
     });
   });
 
-  describe("Sandbox Run (Container Image)", () => {
-    let runSandbox: Sandbox;
+  describe("Machine Run (Container Image)", () => {
+    let runMachine: Machine;
 
     beforeAll(async () => {
-      runSandbox = await Sandbox.create({
-        name: uniqueSandboxName("run-tests"),
+      runMachine = await Machine.create({
+        name: uniqueMachineName("run-tests"),
         serverUrl: TEST_SERVER_URL,
       });
-      await ensureTestImage(runSandbox);
+      await ensureTestImage(runMachine);
     });
 
     afterAll(async () => {
       try {
-        await runSandbox.stop();
+        await runMachine.stop();
       } catch {
         // Ignore
       }
       try {
-        await runSandbox.delete();
+        await runMachine.delete();
       } catch {
         // Ignore
       }
     });
 
     it("should run a command in a container image", async () => {
-      const result = await runSandbox.run(TEST_IMAGE, [
+      const result = await runMachine.run(TEST_IMAGE, [
         "cat",
         "/etc/alpine-release",
       ]);
@@ -152,7 +152,7 @@ describe("Sandbox E2E Tests", () => {
     });
 
     it("should pass env vars to container run", async () => {
-      const result = await runSandbox.run(
+      const result = await runMachine.run(
         TEST_IMAGE,
         ["sh", "-c", "echo $CONTAINER_VAR"],
         { env: { CONTAINER_VAR: "container-test" } }
@@ -163,22 +163,22 @@ describe("Sandbox E2E Tests", () => {
   });
 
   describe("Helper Functions", () => {
-    it("withSandbox should create, use, and cleanup automatically", async () => {
-      const name = uniqueSandboxName("with-sandbox");
+    it("withMachine should create, use, and cleanup automatically", async () => {
+      const name = uniqueMachineName("with-machine");
 
-      const result = await withSandbox(
+      const result = await withMachine(
         { name, serverUrl: TEST_SERVER_URL },
-        async (sandbox) => {
-          expect(sandbox.isStarted).toBe(true);
-          return sandbox.exec(["echo", "test"]);
+        async (machine) => {
+          expect(machine.isStarted).toBe(true);
+          return machine.exec(["echo", "test"]);
         }
       );
 
       expect(result.stdout.trim()).toBe("test");
 
-      // Verify sandbox was deleted
-      const client = new Sandbox({ name, serverUrl: TEST_SERVER_URL }).client;
-      await expect(client.getSandbox(name)).rejects.toThrow(NotFoundError);
+      // Verify machine was deleted
+      const client = new Machine({ name, serverUrl: TEST_SERVER_URL }).client;
+      await expect(client.getMachine(name)).rejects.toThrow(NotFoundError);
     });
 
     it("quickExec should execute and cleanup", async () => {

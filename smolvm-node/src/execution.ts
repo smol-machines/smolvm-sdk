@@ -26,9 +26,7 @@ export class ExecResult {
   readonly stderr: string;
 
   constructor(response: ExecResponse) {
-    // Note: API returns snake_case but generated types use camelCase
-    // We access the raw response with snake_case since client doesn't transform
-    this.exitCode = (response as any).exit_code ?? response.exitCode;
+    this.exitCode = response.exitCode;
     this.stdout = response.stdout;
     this.stderr = response.stderr;
   }

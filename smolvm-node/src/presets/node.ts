@@ -1,20 +1,20 @@
-import { Sandbox } from "../sandbox.js";
+import { Machine } from "../machine.js";
 import { ExecResult } from "../execution.js";
-import type { SandboxConfig, CodeOptions, ExecOptions } from "../types.js";
+import type { MachineConfig, CodeOptions, ExecOptions } from "../types.js";
 
 /**
- * Node.js-specific sandbox with convenience methods for running JavaScript/TypeScript.
+ * Node.js-specific machine with convenience methods for running JavaScript/TypeScript.
  */
-export class NodeSandbox extends Sandbox {
+export class NodeMachine extends Machine {
   static readonly DEFAULT_IMAGE = "node:22-alpine";
 
   /**
-   * Create a new Node sandbox and start it.
+   * Create a new Node machine and start it.
    */
-  static async create(config: SandboxConfig): Promise<NodeSandbox> {
-    const sandbox = new NodeSandbox(config);
-    await sandbox.start();
-    return sandbox;
+  static async create(config: MachineConfig): Promise<NodeMachine> {
+    const machine = new NodeMachine(config);
+    await machine.start();
+    return machine;
   }
 
   /**
@@ -24,18 +24,18 @@ export class NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async runCode(code: string, options?: CodeOptions): Promise<ExecResult> {
-    const image = options?.image || NodeSandbox.DEFAULT_IMAGE;
+    const image = options?.image || NodeMachine.DEFAULT_IMAGE;
     return this.run(image, ["node", "-e", code], options);
   }
 
   /**
    * Run a JavaScript file.
    *
-   * @param path - Path to the JavaScript file (within the sandbox)
+   * @param path - Path to the JavaScript file (within the machine)
    * @param options - Execution options
    */
   async runFile(path: string, options?: CodeOptions): Promise<ExecResult> {
-    const image = options?.image || NodeSandbox.DEFAULT_IMAGE;
+    const image = options?.image || NodeMachine.DEFAULT_IMAGE;
     return this.run(image, ["node", path], options);
   }
 
@@ -46,7 +46,7 @@ export class NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async npm(args: string[], options?: ExecOptions): Promise<ExecResult> {
-    return this.run(NodeSandbox.DEFAULT_IMAGE, ["npm", ...args], options);
+    return this.run(NodeMachine.DEFAULT_IMAGE, ["npm", ...args], options);
   }
 
   /**
@@ -69,7 +69,7 @@ export class NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async npx(args: string[], options?: ExecOptions): Promise<ExecResult> {
-    return this.run(NodeSandbox.DEFAULT_IMAGE, ["npx", ...args], options);
+    return this.run(NodeMachine.DEFAULT_IMAGE, ["npx", ...args], options);
   }
 
   /**
@@ -87,7 +87,7 @@ export class NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async runESM(code: string, options?: CodeOptions): Promise<ExecResult> {
-    const image = options?.image || NodeSandbox.DEFAULT_IMAGE;
+    const image = options?.image || NodeMachine.DEFAULT_IMAGE;
     return this.run(
       image,
       ["node", "--input-type=module", "-e", code],

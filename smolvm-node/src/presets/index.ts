@@ -1,2 +1,2 @@
-export { PythonSandbox } from "./python.js";
-export { NodeSandbox } from "./node.js";
+export { PythonMachine } from "./python.js";
+export { NodeMachine } from "./node.js";

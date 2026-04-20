@@ -8,7 +8,7 @@
 // Re-export all generated types from OpenAPI
 export type {
   // Request types
-  CreateSandboxRequest,
+  CreateMachineRequest,
   ExecRequest,
   RunRequest,
   EnvVar,
@@ -19,18 +19,18 @@ export type {
   DeleteContainerRequest,
   PullImageRequest,
   LogsQuery,
-  CreateMicrovmRequest,
-  MicrovmExecRequest,
+  MachineExecRequest,
   RestartSpec,
   MountSpec,
   PortSpec,
   ResourceSpec,
   DeleteQuery,
+  ResizeMachineRequest,
   // Response types
   HealthResponse,
-  SandboxInfo,
+  MachineInfo,
   MountInfo,
-  ListSandboxesResponse,
+  ListMachinesResponse,
   ExecResponse,
   ContainerInfo,
   ListContainersResponse,
@@ -38,9 +38,9 @@ export type {
   ListImagesResponse,
   PullImageResponse,
   DeleteResponse,
+  StartResponse,
+  StopResponse,
   ApiErrorResponse,
-  MicrovmInfo,
-  ListMicrovmsResponse,
 } from "./generated/models/index.js";
 
 // ============================================================================
@@ -50,10 +50,10 @@ export type {
 import type { MountSpec, PortSpec, ResourceSpec } from "./generated/models/index.js";
 
 /**
- * Configuration for creating a sandbox via the high-level SDK.
+ * Configuration for creating a machine via the high-level SDK.
  */
-export interface SandboxConfig {
-  /** Unique name for the sandbox */
+export interface MachineConfig {
+  /** Unique name for the machine */
   name: string;
   /** Server URL (default: "http://127.0.0.1:8080") */
   serverUrl?: string;
@@ -66,18 +66,14 @@ export interface SandboxConfig {
 }
 
 /**
- * Sandbox state.
+ * Machine state.
  */
-export type SandboxState = "created" | "running" | "stopped";
+export type MachineState = "created" | "running" | "stopped";
 
 /**
  * Container state.
  */
 export type ContainerState = "created" | "running" | "stopped";
-
-// ============================================================================
-// SDK Execution Options
-// ============================================================================
 
 /**
  * Options for command execution.
@@ -85,7 +81,7 @@ export type ContainerState = "created" | "running" | "stopped";
 export interface ExecOptions {
   /** Environment variables as key-value pairs */
   env?: Record<string, string>;
-  /** Working directory for the command */
+  /** Working directory */
   workdir?: string;
   /** Timeout in seconds */
   timeout?: number;
@@ -95,33 +91,20 @@ export interface ExecOptions {
  * Options for log streaming.
  */
 export interface LogsOptions {
-  /** Follow the logs (like tail -f) */
+  /** Only return logs after this timestamp */
+  since?: string;
+  /** Follow log output */
   follow?: boolean;
-  /** Number of lines to show from the end */
-  tail?: number;
 }
 
 /**
- * Options for creating a container.
+ * Container creation options.
  */
 export interface ContainerOptions {
-  /** OCI image to use */
-  image: string;
-  /** Command and arguments */
-  command?: string[];
-  /** Environment variables as key-value pairs */
-  env?: Record<string, string>;
-  /** Working directory */
+  /** Working directory inside the container */
   workdir?: string;
-  /** Volume mounts using virtiofs tags */
-  mounts?: Array<{
-    /** Virtiofs tag (e.g., "smolvm0") */
-    tag: string;
-    /** Target path in container */
-    target: string;
-    /** Read-only mount */
-    readonly?: boolean;
-  }>;
+  /** Container volume mounts (using virtiofs tags from machine mounts) */
+  mounts?: Array<{ source: string; target: string; readOnly?: boolean }>;
 }
 
 /**
@@ -132,35 +115,42 @@ export interface CodeOptions extends ExecOptions {
   image?: string;
 }
 
-// ============================================================================
-// Legacy Type Aliases (for backwards compatibility)
-// ============================================================================
-
-// These type aliases exist for backwards compatibility with code that uses
-// the old snake_case naming convention for SDK-specific types.
-
-/** @deprecated Use RestartSpec from generated types */
+/**
+ * Restart policy configuration.
+ */
 export type RestartPolicy = {
-  policy: "always" | "on-failure" | "never" | "unless-stopped";
-  max_retries?: number;
+  policy: "always" | "on-failure" | "never";
+  maxRetries?: number;
 };
 
-/** @deprecated Use HealthResponse from generated types */
+/**
+ * Health check configuration.
+ */
 export interface HealthCheckConfig {
+  /** Command to run for health check */
   command: string[];
-  intervalSecs?: number;
-  timeoutSecs?: number;
+  /** Interval between checks in seconds */
+  interval?: number;
+  /** Timeout for each check in seconds */
+  timeout?: number;
+  /** Number of retries before marking unhealthy */
   retries?: number;
+  /** Grace period after start before checking */
+  startPeriod?: number;
 }
 
-/** @deprecated */
+/**
+ * Health check status.
+ */
 export type HealthStatus = "healthy" | "unhealthy" | "starting" | "none";
 
-/** @deprecated */
+/**
+ * Health check info returned by the API.
+ */
 export interface HealthInfo {
   status: HealthStatus;
-  lastCheck?: string;
+  failingStreak: number;
+  lastOutput?: string;
 }
 
-/** @deprecated Use RestartPolicyType instead */
 export type RestartPolicyType = "always" | "on-failure" | "never";

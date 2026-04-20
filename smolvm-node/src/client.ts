@@ -14,8 +14,8 @@ import {
 // Import types from generated OpenAPI models
 import type {
   HealthResponse,
-  CreateSandboxRequest,
-  SandboxInfo,
+  CreateMachineRequest,
+  MachineInfo,
   ExecRequest,
   ExecResponse,
   RunRequest,
@@ -29,13 +29,10 @@ import type {
   PullImageRequest,
   PullImageResponse,
   ApiErrorResponse,
-  ListSandboxesResponse,
+  ListMachinesResponse,
   ListContainersResponse,
   ListImagesResponse,
-  CreateMicrovmRequest,
-  MicrovmInfo,
-  MicrovmExecRequest,
-  ListMicrovmsResponse,
+  MachineExecRequest,
   LogsQuery,
 } from "./generated/models/index.js";
 
@@ -148,68 +145,68 @@ export class SmolvmClient {
   }
 
   // ==========================================================================
-  // Sandboxes
+  // Machines
   // ==========================================================================
 
   /**
-   * Create a new sandbox.
+   * Create a new machine.
    */
-  async createSandbox(req: CreateSandboxRequest): Promise<SandboxInfo> {
-    return this.request<SandboxInfo>("POST", "/api/v1/sandboxes", req);
+  async createMachine(req: CreateMachineRequest): Promise<MachineInfo> {
+    return this.request<MachineInfo>("POST", "/api/v1/machines", req);
   }
 
   /**
-   * List all sandboxes.
+   * List all machines.
    */
-  async listSandboxes(): Promise<SandboxInfo[]> {
-    const response = await this.request<ListSandboxesResponse>(
+  async listMachines(): Promise<MachineInfo[]> {
+    const response = await this.request<ListMachinesResponse>(
       "GET",
-      "/api/v1/sandboxes"
+      "/api/v1/machines"
     );
-    return response.sandboxes;
+    return response.machines;
   }
 
   /**
-   * Get sandbox by name.
+   * Get machine by name.
    */
-  async getSandbox(name: string): Promise<SandboxInfo> {
-    return this.request<SandboxInfo>(
+  async getMachine(name: string): Promise<MachineInfo> {
+    return this.request<MachineInfo>(
       "GET",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}`
+      `/api/v1/machines/${encodeURIComponent(name)}`
     );
   }
 
   /**
-   * Start a sandbox.
+   * Start a machine.
    */
-  async startSandbox(name: string): Promise<SandboxInfo> {
-    return this.request<SandboxInfo>(
+  async startMachine(name: string): Promise<MachineInfo> {
+    return this.request<MachineInfo>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}/start`
+      `/api/v1/machines/${encodeURIComponent(name)}/start`
     );
   }
 
   /**
-   * Stop a sandbox.
+   * Stop a machine.
    */
-  async stopSandbox(name: string): Promise<SandboxInfo> {
-    return this.request<SandboxInfo>(
+  async stopMachine(name: string): Promise<MachineInfo> {
+    return this.request<MachineInfo>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}/stop`
+      `/api/v1/machines/${encodeURIComponent(name)}/stop`
     );
   }
 
   /**
-   * Delete a sandbox.
+   * Delete a machine.
    *
-   * @param name - Sandbox name
+   * @param name - Machine name
    * @param force - Force delete even if VM is still running (may orphan the process)
    */
-  async deleteSandbox(name: string, force?: boolean): Promise<DeleteResponse> {
+  async deleteMachine(name: string, force?: boolean): Promise<DeleteResponse> {
     const query = force ? "?force=true" : "";
     return this.request<DeleteResponse>(
       "DELETE",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}${query}`
+      `/api/v1/machines/${encodeURIComponent(name)}${query}`
     );
   }
 
@@ -218,10 +215,10 @@ export class SmolvmClient {
   // ==========================================================================
 
   /**
-   * Execute a command in the sandbox VM.
+   * Execute a command in the machine VM.
    */
   async exec(
-    sandbox: string,
+    machine: string,
     req: ExecRequest,
     timeout?: number
   ): Promise<ExecResponse> {
@@ -231,17 +228,17 @@ export class SmolvmClient {
       : timeout;
     return this.request<ExecResponse>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/exec`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/exec`,
       req,
       requestTimeout
     );
   }
 
   /**
-   * Run a command in a container image within the sandbox.
+   * Run a command in a container image within the machine.
    */
   async run(
-    sandbox: string,
+    machine: string,
     req: RunRequest,
     timeout?: number
   ): Promise<ExecResponse> {
@@ -251,17 +248,17 @@ export class SmolvmClient {
       : timeout;
     return this.request<ExecResponse>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/run`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/run`,
       req,
       requestTimeout
     );
   }
 
   /**
-   * Stream logs from a sandbox via SSE.
+   * Stream logs from a machine via SSE.
    */
   async *streamLogs(
-    sandbox: string,
+    machine: string,
     query?: LogsQuery,
     signal?: AbortSignal
   ): AsyncIterable<string> {
@@ -274,7 +271,7 @@ export class SmolvmClient {
     }
 
     const queryString = params.toString();
-    const url = `${this.baseUrl}/api/v1/sandboxes/${encodeURIComponent(sandbox)}/logs${queryString ? `?${queryString}` : ""}`;
+    const url = `${this.baseUrl}/api/v1/machines/${encodeURIComponent(machine)}/logs${queryString ? `?${queryString}` : ""}`;
 
     const response = await fetch(url, {
       headers: { Accept: "text/event-stream" },
@@ -332,26 +329,26 @@ export class SmolvmClient {
   // ==========================================================================
 
   /**
-   * Create a container in a sandbox.
+   * Create a container in a machine.
    */
   async createContainer(
-    sandbox: string,
+    machine: string,
     req: CreateContainerRequest
   ): Promise<ContainerInfo> {
     return this.request<ContainerInfo>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers`,
       req
     );
   }
 
   /**
-   * List containers in a sandbox.
+   * List containers in a machine.
    */
-  async listContainers(sandbox: string): Promise<ContainerInfo[]> {
+  async listContainers(machine: string): Promise<ContainerInfo[]> {
     const response = await this.request<ListContainersResponse>(
       "GET",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers`
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers`
     );
     return response.containers;
   }
@@ -360,12 +357,12 @@ export class SmolvmClient {
    * Start a container.
    */
   async startContainer(
-    sandbox: string,
+    machine: string,
     containerId: string
   ): Promise<StartResponse> {
     return this.request<StartResponse>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/start`
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/start`
     );
   }
 
@@ -373,14 +370,14 @@ export class SmolvmClient {
    * Stop a container.
    */
   async stopContainer(
-    sandbox: string,
+    machine: string,
     containerId: string,
     req?: StopContainerRequest
   ): Promise<StopResponse> {
     // API requires a JSON body even if empty
     return this.request<StopResponse>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/stop`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/stop`,
       req ?? {}
     );
   }
@@ -389,14 +386,14 @@ export class SmolvmClient {
    * Delete a container.
    */
   async deleteContainer(
-    sandbox: string,
+    machine: string,
     containerId: string,
     req?: DeleteContainerRequest
   ): Promise<DeleteResponse> {
     // API requires force in body, not query params
     return this.request<DeleteResponse>(
       "DELETE",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}`,
       req ?? {}
     );
   }
@@ -405,7 +402,7 @@ export class SmolvmClient {
    * Execute a command in a container.
    */
   async execContainer(
-    sandbox: string,
+    machine: string,
     containerId: string,
     req: ContainerExecRequest,
     timeout?: number
@@ -415,7 +412,7 @@ export class SmolvmClient {
       : timeout;
     return this.request<ExecResponse>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/exec`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/exec`,
       req,
       requestTimeout
     );
@@ -426,101 +423,39 @@ export class SmolvmClient {
   // ==========================================================================
 
   /**
-   * List images in a sandbox.
+   * List images in a machine.
    */
-  async listImages(sandbox: string): Promise<ImageInfo[]> {
+  async listImages(machine: string): Promise<ImageInfo[]> {
     const response = await this.request<ListImagesResponse>(
       "GET",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/images`
+      `/api/v1/machines/${encodeURIComponent(machine)}/images`
     );
     return response.images;
   }
 
   /**
-   * Pull an image into a sandbox.
+   * Pull an image into a machine.
    */
   async pullImage(
-    sandbox: string,
+    machine: string,
     req: PullImageRequest,
     timeout: number = 300000 // 5 minutes default for image pulls
   ): Promise<ImageInfo> {
     const response = await this.request<PullImageResponse>(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/images/pull`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/images/pull`,
       req,
       timeout
     );
     return response.image;
   }
 
-  // ==========================================================================
-  // MicroVMs
-  // ==========================================================================
-
   /**
-   * Create a new microvm.
+   * Execute a command directly in a machine (VM-level, not container).
    */
-  async createMicrovm(req: CreateMicrovmRequest): Promise<MicrovmInfo> {
-    return this.request<MicrovmInfo>("POST", "/api/v1/microvms", req);
-  }
-
-  /**
-   * List all microvms.
-   */
-  async listMicrovms(): Promise<MicrovmInfo[]> {
-    const response = await this.request<ListMicrovmsResponse>(
-      "GET",
-      "/api/v1/microvms"
-    );
-    return response.microvms;
-  }
-
-  /**
-   * Get microvm by name.
-   */
-  async getMicrovm(name: string): Promise<MicrovmInfo> {
-    return this.request<MicrovmInfo>(
-      "GET",
-      `/api/v1/microvms/${encodeURIComponent(name)}`
-    );
-  }
-
-  /**
-   * Start a microvm.
-   */
-  async startMicrovm(name: string): Promise<MicrovmInfo> {
-    return this.request<MicrovmInfo>(
-      "POST",
-      `/api/v1/microvms/${encodeURIComponent(name)}/start`
-    );
-  }
-
-  /**
-   * Stop a microvm.
-   */
-  async stopMicrovm(name: string): Promise<MicrovmInfo> {
-    return this.request<MicrovmInfo>(
-      "POST",
-      `/api/v1/microvms/${encodeURIComponent(name)}/stop`
-    );
-  }
-
-  /**
-   * Delete a microvm.
-   */
-  async deleteMicrovm(name: string): Promise<void> {
-    await this.request<void>(
-      "DELETE",
-      `/api/v1/microvms/${encodeURIComponent(name)}`
-    );
-  }
-
-  /**
-   * Execute a command in a microvm.
-   */
-  async execMicrovm(
+  async execMachine(
     name: string,
-    req: MicrovmExecRequest,
+    req: MachineExecRequest,
     timeout?: number
   ): Promise<ExecResponse> {
     const requestTimeout = req.timeoutSecs
@@ -528,7 +463,7 @@ export class SmolvmClient {
       : timeout;
     return this.request<ExecResponse>(
       "POST",
-      `/api/v1/microvms/${encodeURIComponent(name)}/exec`,
+      `/api/v1/machines/${encodeURIComponent(name)}/exec`,
       req,
       requestTimeout
     );

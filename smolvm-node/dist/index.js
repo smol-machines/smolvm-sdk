@@ -23,14 +23,13 @@ __export(index_exports, {
   BadRequestError: () => BadRequestError,
   ConflictError: () => ConflictError,
   ConnectionError: () => ConnectionError,
-  Container: () => Container,
   ExecResult: () => ExecResult,
   ExecutionError: () => ExecutionError,
   InternalError: () => InternalError,
-  NodeSandbox: () => NodeSandbox,
+  Machine: () => Machine,
+  NodeMachine: () => NodeMachine,
   NotFoundError: () => NotFoundError,
-  PythonSandbox: () => PythonSandbox,
-  Sandbox: () => Sandbox,
+  PythonMachine: () => PythonMachine,
   SmolvmClient: () => SmolvmClient,
   SmolvmError: () => SmolvmError,
   TimeoutError: () => TimeoutError,
@@ -40,7 +39,7 @@ __export(index_exports, {
   quickExec: () => quickExec,
   quickRun: () => quickRun,
   streamSSE: () => streamSSE,
-  withSandbox: () => withSandbox
+  withMachine: () => withMachine
 });
 module.exports = __toCommonJS(index_exports);
 
@@ -181,91 +180,95 @@ var SmolvmClient = class {
     return this.request("GET", "/health");
   }
   // ==========================================================================
-  // Sandboxes
+  // Machines
   // ==========================================================================
   /**
-   * Create a new sandbox.
+   * Create a new machine.
    */
-  async createSandbox(req) {
-    return this.request("POST", "/api/v1/sandboxes", req);
+  async createMachine(req) {
+    return this.request("POST", "/api/v1/machines", req);
   }
   /**
-   * List all sandboxes.
+   * List all machines.
    */
-  async listSandboxes() {
+  async listMachines() {
     const response = await this.request(
       "GET",
-      "/api/v1/sandboxes"
+      "/api/v1/machines"
     );
-    return response.sandboxes;
+    return response.machines;
   }
   /**
-   * Get sandbox by name.
+   * Get machine by name.
    */
-  async getSandbox(name) {
+  async getMachine(name) {
     return this.request(
       "GET",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}`
+      `/api/v1/machines/${encodeURIComponent(name)}`
     );
   }
   /**
-   * Start a sandbox.
+   * Start a machine.
    */
-  async startSandbox(name) {
+  async startMachine(name) {
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}/start`
+      `/api/v1/machines/${encodeURIComponent(name)}/start`
     );
   }
   /**
-   * Stop a sandbox.
+   * Stop a machine.
    */
-  async stopSandbox(name) {
+  async stopMachine(name) {
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}/stop`
+      `/api/v1/machines/${encodeURIComponent(name)}/stop`
     );
   }
   /**
-   * Delete a sandbox.
+   * Delete a machine.
+   *
+   * @param name - Machine name
+   * @param force - Force delete even if VM is still running (may orphan the process)
    */
-  async deleteSandbox(name) {
-    await this.request(
+  async deleteMachine(name, force) {
+    const query = force ? "?force=true" : "";
+    return this.request(
       "DELETE",
-      `/api/v1/sandboxes/${encodeURIComponent(name)}`
+      `/api/v1/machines/${encodeURIComponent(name)}${query}`
     );
   }
   // ==========================================================================
   // Execution
   // ==========================================================================
   /**
-   * Execute a command in the sandbox VM.
+   * Execute a command in the machine VM.
    */
-  async exec(sandbox, req, timeout) {
+  async exec(machine, req, timeout) {
     const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/exec`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/exec`,
       req,
       requestTimeout
     );
   }
   /**
-   * Run a command in a container image within the sandbox.
+   * Run a command in a container image within the machine.
    */
-  async run(sandbox, req, timeout) {
+  async run(machine, req, timeout) {
     const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/run`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/run`,
       req,
       requestTimeout
     );
   }
   /**
-   * Stream logs from a sandbox via SSE.
+   * Stream logs from a machine via SSE.
    */
-  async *streamLogs(sandbox, query, signal) {
+  async *streamLogs(machine, query, signal) {
     const params = new URLSearchParams();
     if (query?.follow) {
       params.set("follow", "true");
@@ -274,7 +277,7 @@ var SmolvmClient = class {
       params.set("tail", query.tail.toString());
     }
     const queryString = params.toString();
-    const url = `${this.baseUrl}/api/v1/sandboxes/${encodeURIComponent(sandbox)}/logs${queryString ? `?${queryString}` : ""}`;
+    const url = `${this.baseUrl}/api/v1/machines/${encodeURIComponent(machine)}/logs${queryString ? `?${queryString}` : ""}`;
     const response = await fetch(url, {
       headers: { Accept: "text/event-stream" },
       signal
@@ -321,62 +324,62 @@ var SmolvmClient = class {
   // Containers
   // ==========================================================================
   /**
-   * Create a container in a sandbox.
+   * Create a container in a machine.
    */
-  async createContainer(sandbox, req) {
+  async createContainer(machine, req) {
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers`,
       req
     );
   }
   /**
-   * List containers in a sandbox.
+   * List containers in a machine.
    */
-  async listContainers(sandbox) {
+  async listContainers(machine) {
     const response = await this.request(
       "GET",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers`
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers`
     );
     return response.containers;
   }
   /**
    * Start a container.
    */
-  async startContainer(sandbox, containerId) {
+  async startContainer(machine, containerId) {
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/start`
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/start`
     );
   }
   /**
    * Stop a container.
    */
-  async stopContainer(sandbox, containerId, req) {
+  async stopContainer(machine, containerId, req) {
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/stop`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/stop`,
       req ?? {}
     );
   }
   /**
    * Delete a container.
    */
-  async deleteContainer(sandbox, containerId, req) {
-    await this.request(
+  async deleteContainer(machine, containerId, req) {
+    return this.request(
       "DELETE",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}`,
       req ?? {}
     );
   }
   /**
    * Execute a command in a container.
    */
-  async execContainer(sandbox, containerId, req, timeout) {
+  async execContainer(machine, containerId, req, timeout) {
     const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
     return this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/containers/${encodeURIComponent(containerId)}/exec`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/exec`,
       req,
       requestTimeout
     );
@@ -385,90 +388,35 @@ var SmolvmClient = class {
   // Images
   // ==========================================================================
   /**
-   * List images in a sandbox.
+   * List images in a machine.
    */
-  async listImages(sandbox) {
+  async listImages(machine) {
     const response = await this.request(
       "GET",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/images`
+      `/api/v1/machines/${encodeURIComponent(machine)}/images`
     );
     return response.images;
   }
   /**
-   * Pull an image into a sandbox.
+   * Pull an image into a machine.
    */
-  async pullImage(sandbox, req, timeout = 3e5) {
+  async pullImage(machine, req, timeout = 3e5) {
     const response = await this.request(
       "POST",
-      `/api/v1/sandboxes/${encodeURIComponent(sandbox)}/images/pull`,
+      `/api/v1/machines/${encodeURIComponent(machine)}/images/pull`,
       req,
       timeout
     );
     return response.image;
   }
-  // ==========================================================================
-  // MicroVMs
-  // ==========================================================================
   /**
-   * Create a new microvm.
+   * Execute a command directly in a machine (VM-level, not container).
    */
-  async createMicrovm(req) {
-    return this.request("POST", "/api/v1/microvms", req);
-  }
-  /**
-   * List all microvms.
-   */
-  async listMicrovms() {
-    const response = await this.request(
-      "GET",
-      "/api/v1/microvms"
-    );
-    return response.microvms;
-  }
-  /**
-   * Get microvm by name.
-   */
-  async getMicrovm(name) {
-    return this.request(
-      "GET",
-      `/api/v1/microvms/${encodeURIComponent(name)}`
-    );
-  }
-  /**
-   * Start a microvm.
-   */
-  async startMicrovm(name) {
-    return this.request(
-      "POST",
-      `/api/v1/microvms/${encodeURIComponent(name)}/start`
-    );
-  }
-  /**
-   * Stop a microvm.
-   */
-  async stopMicrovm(name) {
-    return this.request(
-      "POST",
-      `/api/v1/microvms/${encodeURIComponent(name)}/stop`
-    );
-  }
-  /**
-   * Delete a microvm.
-   */
-  async deleteMicrovm(name) {
-    await this.request(
-      "DELETE",
-      `/api/v1/microvms/${encodeURIComponent(name)}`
-    );
-  }
-  /**
-   * Execute a command in a microvm.
-   */
-  async execMicrovm(name, req, timeout) {
+  async execMachine(name, req, timeout) {
     const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
     return this.request(
       "POST",
-      `/api/v1/microvms/${encodeURIComponent(name)}/exec`,
+      `/api/v1/machines/${encodeURIComponent(name)}/exec`,
       req,
       requestTimeout
     );
@@ -493,7 +441,7 @@ var ExecResult = class {
   stdout;
   stderr;
   constructor(response) {
-    this.exitCode = response.exit_code ?? response.exitCode;
+    this.exitCode = response.exitCode;
     this.stdout = response.stdout;
     this.stderr = response.stderr;
   }
@@ -540,17 +488,14 @@ var Container = class {
    * Start the container.
    */
   async start() {
-    this._info = await this.parent.client.startContainer(
-      this.parent.name,
-      this.id
-    );
+    await this.parent.client.startContainer(this.parent.name, this.id);
   }
   /**
    * Stop the container.
    * @param timeout - Timeout in seconds to wait for graceful stop
    */
   async stop(timeout) {
-    this._info = await this.parent.client.stopContainer(
+    await this.parent.client.stopContainer(
       this.parent.name,
       this.id,
       timeout !== void 0 ? { timeoutSecs: timeout } : void 0
@@ -617,7 +562,7 @@ var Container = class {
    * Get the container creation timestamp.
    */
   get createdAt() {
-    return this._info.created_at ?? this._info.createdAt;
+    return this._info.createdAt;
   }
   /**
    * Get the raw container info.
@@ -627,9 +572,9 @@ var Container = class {
   }
 };
 
-// src/sandbox.ts
+// src/machine.ts
 var DEFAULT_SERVER_URL = "http://127.0.0.1:8080";
-var Sandbox = class _Sandbox {
+var Machine = class _Machine {
   name;
   client;
   config;
@@ -641,48 +586,48 @@ var Sandbox = class _Sandbox {
     this.client = new SmolvmClient(config.serverUrl || DEFAULT_SERVER_URL);
   }
   /**
-   * Create a new sandbox and start it.
+   * Create a new machine and start it.
    */
   static async create(config) {
-    const sandbox = new _Sandbox(config);
-    await sandbox.start();
-    return sandbox;
+    const machine = new _Machine(config);
+    await machine.start();
+    return machine;
   }
   // =========================================================================
   // Lifecycle
   // =========================================================================
   /**
-   * Create and start the sandbox.
-   * If the sandbox already exists, it will be started if not already running.
+   * Create and start the machine.
+   * If the machine already exists, it will be started if not already running.
    */
   async start() {
     if (this._started) {
       return;
     }
-    this._info = await this.client.createSandbox({
+    this._info = await this.client.createMachine({
       name: this.config.name,
       mounts: this.config.mounts,
       ports: this.config.ports,
       resources: this.config.resources
     });
-    this._info = await this.client.startSandbox(this.name);
+    this._info = await this.client.startMachine(this.name);
     this._started = true;
   }
   /**
-   * Stop the sandbox.
+   * Stop the machine.
    */
   async stop() {
     if (!this._started) {
       return;
     }
-    this._info = await this.client.stopSandbox(this.name);
+    this._info = await this.client.stopMachine(this.name);
     this._started = false;
   }
   /**
-   * Delete the sandbox.
+   * Delete the machine.
    */
   async delete() {
-    await this.client.deleteSandbox(this.name);
+    await this.client.deleteMachine(this.name);
     this._info = void 0;
     this._started = false;
   }
@@ -690,32 +635,32 @@ var Sandbox = class _Sandbox {
   // Status
   // =========================================================================
   /**
-   * Get the current sandbox status.
+   * Get the current machine status.
    */
   async status() {
-    this._info = await this.client.getSandbox(this.name);
+    this._info = await this.client.getMachine(this.name);
     return this._info;
   }
   /**
-   * Whether the sandbox has been started.
+   * Whether the machine has been started.
    */
   get isStarted() {
     return this._started;
   }
   /**
-   * Get the current sandbox state.
+   * Get the current machine state.
    */
   get state() {
     return this._info?.state;
   }
   /**
-   * Get the sandbox mounts.
+   * Get the machine mounts.
    */
   get mounts() {
     return this._info?.mounts || [];
   }
   /**
-   * Get the raw sandbox info.
+   * Get the raw machine info.
    */
   get info() {
     return this._info;
@@ -724,7 +669,7 @@ var Sandbox = class _Sandbox {
   // Execution
   // =========================================================================
   /**
-   * Execute a command directly in the sandbox VM.
+   * Execute a command directly in the machine VM.
    */
   async exec(command, options) {
     const env = options?.env ? Object.entries(options.env).map(([name, value]) => ({ name, value })) : void 0;
@@ -737,7 +682,7 @@ var Sandbox = class _Sandbox {
     return new ExecResult(response);
   }
   /**
-   * Run a command in a container image within the sandbox.
+   * Run a command in a container image within the machine.
    */
   async run(image, command, options) {
     const env = options?.env ? Object.entries(options.env).map(([name, value]) => ({ name, value })) : void 0;
@@ -754,7 +699,7 @@ var Sandbox = class _Sandbox {
   // Logs
   // =========================================================================
   /**
-   * Stream logs from the sandbox.
+   * Stream logs from the machine.
    */
   logs(options) {
     return this.client.streamLogs(this.name, {
@@ -766,7 +711,7 @@ var Sandbox = class _Sandbox {
   // Containers
   // =========================================================================
   /**
-   * Create a container in the sandbox.
+   * Create a container in the machine.
    */
   async createContainer(options) {
     const env = options.env ? Object.entries(options.env).map(([name, value]) => ({ name, value })) : void 0;
@@ -787,7 +732,7 @@ var Sandbox = class _Sandbox {
     return new Container(this, info);
   }
   /**
-   * List all containers in the sandbox.
+   * List all containers in the machine.
    */
   async listContainers() {
     const containers = await this.client.listContainers(this.name);
@@ -808,29 +753,29 @@ var Sandbox = class _Sandbox {
   // Images
   // =========================================================================
   /**
-   * List all images in the sandbox.
+   * List all images in the machine.
    */
   async listImages() {
     return this.client.listImages(this.name);
   }
   /**
-   * Pull an image into the sandbox.
+   * Pull an image into the machine.
    */
-  async pullImage(image, platform) {
-    return this.client.pullImage(this.name, { image, platform });
+  async pullImage(image, ociPlatform) {
+    return this.client.pullImage(this.name, { image, ociPlatform });
   }
 };
-async function withSandbox(config, fn) {
-  const sandbox = await Sandbox.create(config);
+async function withMachine(config, fn) {
+  const machine = await Machine.create(config);
   try {
-    return await fn(sandbox);
+    return await fn(machine);
   } finally {
     try {
-      await sandbox.stop();
+      await machine.stop();
     } catch {
     }
     try {
-      await sandbox.delete();
+      await machine.delete();
     } catch {
     }
   }
@@ -843,8 +788,8 @@ async function quickExec(command, options) {
     ports: options?.ports,
     resources: options?.resources
   };
-  return withSandbox(config, async (sandbox) => {
-    return sandbox.exec(command, {
+  return withMachine(config, async (machine) => {
+    return machine.exec(command, {
       env: options?.env,
       workdir: options?.workdir,
       timeout: options?.timeout
@@ -859,8 +804,8 @@ async function quickRun(image, command, options) {
     ports: options?.ports,
     resources: options?.resources
   };
-  return withSandbox(config, async (sandbox) => {
-    return sandbox.run(image, command, {
+  return withMachine(config, async (machine) => {
+    return machine.run(image, command, {
       env: options?.env,
       workdir: options?.workdir,
       timeout: options?.timeout
@@ -869,15 +814,15 @@ async function quickRun(image, command, options) {
 }
 
 // src/presets/python.ts
-var PythonSandbox = class _PythonSandbox extends Sandbox {
+var PythonMachine = class _PythonMachine extends Machine {
   static DEFAULT_IMAGE = "python:3.12-alpine";
   /**
-   * Create a new Python sandbox and start it.
+   * Create a new Python machine and start it.
    */
   static async create(config) {
-    const sandbox = new _PythonSandbox(config);
-    await sandbox.start();
-    return sandbox;
+    const machine = new _PythonMachine(config);
+    await machine.start();
+    return machine;
   }
   /**
    * Run Python code directly.
@@ -886,17 +831,17 @@ var PythonSandbox = class _PythonSandbox extends Sandbox {
    * @param options - Execution options
    */
   async runCode(code, options) {
-    const image = options?.image || _PythonSandbox.DEFAULT_IMAGE;
+    const image = options?.image || _PythonMachine.DEFAULT_IMAGE;
     return this.run(image, ["python", "-c", code], options);
   }
   /**
    * Run a Python file.
    *
-   * @param path - Path to the Python file (within the sandbox)
+   * @param path - Path to the Python file (within the machine)
    * @param options - Execution options
    */
   async runFile(path, options) {
-    const image = options?.image || _PythonSandbox.DEFAULT_IMAGE;
+    const image = options?.image || _PythonMachine.DEFAULT_IMAGE;
     return this.run(image, ["python", path], options);
   }
   /**
@@ -907,7 +852,7 @@ var PythonSandbox = class _PythonSandbox extends Sandbox {
    */
   async pip(packages, options) {
     return this.run(
-      _PythonSandbox.DEFAULT_IMAGE,
+      _PythonMachine.DEFAULT_IMAGE,
       ["pip", "install", ...packages],
       options
     );
@@ -940,7 +885,7 @@ ${mainCode}`;
    */
   async listPackages(options) {
     const result = await this.run(
-      _PythonSandbox.DEFAULT_IMAGE,
+      _PythonMachine.DEFAULT_IMAGE,
       ["pip", "list", "--format=freeze"],
       options
     );
@@ -949,15 +894,15 @@ ${mainCode}`;
 };
 
 // src/presets/node.ts
-var NodeSandbox = class _NodeSandbox extends Sandbox {
+var NodeMachine = class _NodeMachine extends Machine {
   static DEFAULT_IMAGE = "node:22-alpine";
   /**
-   * Create a new Node sandbox and start it.
+   * Create a new Node machine and start it.
    */
   static async create(config) {
-    const sandbox = new _NodeSandbox(config);
-    await sandbox.start();
-    return sandbox;
+    const machine = new _NodeMachine(config);
+    await machine.start();
+    return machine;
   }
   /**
    * Run JavaScript code directly.
@@ -966,17 +911,17 @@ var NodeSandbox = class _NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async runCode(code, options) {
-    const image = options?.image || _NodeSandbox.DEFAULT_IMAGE;
+    const image = options?.image || _NodeMachine.DEFAULT_IMAGE;
     return this.run(image, ["node", "-e", code], options);
   }
   /**
    * Run a JavaScript file.
    *
-   * @param path - Path to the JavaScript file (within the sandbox)
+   * @param path - Path to the JavaScript file (within the machine)
    * @param options - Execution options
    */
   async runFile(path, options) {
-    const image = options?.image || _NodeSandbox.DEFAULT_IMAGE;
+    const image = options?.image || _NodeMachine.DEFAULT_IMAGE;
     return this.run(image, ["node", path], options);
   }
   /**
@@ -986,7 +931,7 @@ var NodeSandbox = class _NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async npm(args, options) {
-    return this.run(_NodeSandbox.DEFAULT_IMAGE, ["npm", ...args], options);
+    return this.run(_NodeMachine.DEFAULT_IMAGE, ["npm", ...args], options);
   }
   /**
    * Install npm packages.
@@ -1004,7 +949,7 @@ var NodeSandbox = class _NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async npx(args, options) {
-    return this.run(_NodeSandbox.DEFAULT_IMAGE, ["npx", ...args], options);
+    return this.run(_NodeMachine.DEFAULT_IMAGE, ["npx", ...args], options);
   }
   /**
    * Check Node.js version.
@@ -1020,7 +965,7 @@ var NodeSandbox = class _NodeSandbox extends Sandbox {
    * @param options - Execution options
    */
   async runESM(code, options) {
-    const image = options?.image || _NodeSandbox.DEFAULT_IMAGE;
+    const image = options?.image || _NodeMachine.DEFAULT_IMAGE;
     return this.run(
       image,
       ["node", "--input-type=module", "-e", code],
@@ -1140,14 +1085,13 @@ async function* mergeStreams(...iterables) {
   BadRequestError,
   ConflictError,
   ConnectionError,
-  Container,
   ExecResult,
   ExecutionError,
   InternalError,
-  NodeSandbox,
+  Machine,
+  NodeMachine,
   NotFoundError,
-  PythonSandbox,
-  Sandbox,
+  PythonMachine,
   SmolvmClient,
   SmolvmError,
   TimeoutError,
@@ -1157,5 +1101,5 @@ async function* mergeStreams(...iterables) {
   quickExec,
   quickRun,
   streamSSE,
-  withSandbox
+  withMachine
 });
