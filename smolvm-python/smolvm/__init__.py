@@ -1,4 +1,4 @@
-"""smolvm - Python SDK for smolvm microVM sandboxes."""
+"""smolvm - Python SDK for smolvm microVM machines."""
 
 from .client import SmolvmClient
 from .errors import (
@@ -12,21 +12,17 @@ from .errors import (
     TimeoutError,
 )
 from .execution import ExecResult
-from .sandbox import Sandbox, quick_exec, quick_run, with_sandbox
+from .machine import Machine, quick_exec, quick_run, with_machine
 from .types import (
-    ContainerInfo,
-    ContainerMountSpec,
-    ContainerOptions,
-    ContainerState,
     ExecOptions,
     ImageInfo,
     MountInfo,
     MountSpec,
     PortSpec,
     ResourceSpec,
-    SandboxConfig,
-    SandboxInfo,
-    SandboxState,
+    MachineConfig,
+    MachineInfo,
+    MachineState,
 )
 
 __version__ = "0.1.0"
@@ -36,21 +32,17 @@ __all__ = [
     "__version__",
     # Client
     "SmolvmClient",
-    # Sandbox
-    "Sandbox",
-    "with_sandbox",
+    # Machine
+    "Machine",
+    "with_machine",
     "quick_exec",
     "quick_run",
     # Execution
     "ExecResult",
     # Types
-    "SandboxConfig",
-    "SandboxInfo",
-    "SandboxState",
-    "ContainerInfo",
-    "ContainerState",
-    "ContainerOptions",
-    "ContainerMountSpec",
+    "MachineConfig",
+    "MachineInfo",
+    "MachineState",
     "ImageInfo",
     "MountSpec",
     "MountInfo",

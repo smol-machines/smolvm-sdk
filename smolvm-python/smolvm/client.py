@@ -6,7 +6,7 @@ from urllib.parse import quote
 import httpx
 
 from .errors import ConnectionError, SmolvmError, TimeoutError, parse_api_error
-from .types import ContainerInfo, ImageInfo, MicrovmInfo, MountSpec, PortSpec, ResourceSpec, SandboxInfo
+from .types import ImageInfo, MachineInfo, MountSpec, PortSpec, ResourceSpec
 
 DEFAULT_TIMEOUT = 30.0  # seconds
 
@@ -96,28 +96,28 @@ class SmolvmClient:
         return await self._request("GET", "/health")
 
     # =========================================================================
-    # Sandboxes
+    # Machines
     # =========================================================================
 
-    async def create_sandbox(
+    async def create_machine(
         self,
         name: str,
         mounts: Optional[list[MountSpec]] = None,
         ports: Optional[list[PortSpec]] = None,
         resources: Optional[ResourceSpec] = None,
         network: bool = False,
-    ) -> SandboxInfo:
-        """Create a new sandbox.
+    ) -> MachineInfo:
+        """Create a new machine.
 
         Args:
-            name: Unique name for the sandbox
+            name: Unique name for the machine
             mounts: Host mounts to attach
             ports: Port mappings (host:guest)
             resources: VM resource configuration (cpus, memory)
             network: Enable outbound network access (TCP/UDP only, not ICMP)
 
         Returns:
-            SandboxInfo with the created sandbox details
+            MachineInfo with the created machine details
         """
         body: dict[str, Any] = {"name": name}
 
@@ -144,37 +144,37 @@ class SmolvmClient:
             if res:
                 body["resources"] = res
 
-        data = await self._request("POST", "/api/v1/sandboxes", body)
-        return SandboxInfo.from_dict(data)
+        data = await self._request("POST", "/api/v1/machines", body)
+        return MachineInfo.from_dict(data)
 
-    async def list_sandboxes(self) -> list[SandboxInfo]:
-        """List all sandboxes."""
-        data = await self._request("GET", "/api/v1/sandboxes")
-        return [SandboxInfo.from_dict(s) for s in data.get("sandboxes", [])]
+    async def list_machines(self) -> list[MachineInfo]:
+        """List all machines."""
+        data = await self._request("GET", "/api/v1/machines")
+        return [MachineInfo.from_dict(s) for s in data.get("machines", [])]
 
-    async def get_sandbox(self, name: str) -> SandboxInfo:
-        """Get sandbox by name."""
-        data = await self._request("GET", f"/api/v1/sandboxes/{quote(name, safe='')}")
-        return SandboxInfo.from_dict(data)
+    async def get_machine(self, name: str) -> MachineInfo:
+        """Get machine by name."""
+        data = await self._request("GET", f"/api/v1/machines/{quote(name, safe='')}")
+        return MachineInfo.from_dict(data)
 
-    async def start_sandbox(self, name: str) -> SandboxInfo:
-        """Start a sandbox."""
-        data = await self._request("POST", f"/api/v1/sandboxes/{quote(name, safe='')}/start")
-        return SandboxInfo.from_dict(data)
+    async def start_machine(self, name: str) -> MachineInfo:
+        """Start a machine."""
+        data = await self._request("POST", f"/api/v1/machines/{quote(name, safe='')}/start")
+        return MachineInfo.from_dict(data)
 
-    async def stop_sandbox(self, name: str) -> SandboxInfo:
-        """Stop a sandbox."""
-        data = await self._request("POST", f"/api/v1/sandboxes/{quote(name, safe='')}/stop")
-        return SandboxInfo.from_dict(data)
+    async def stop_machine(self, name: str) -> MachineInfo:
+        """Stop a machine."""
+        data = await self._request("POST", f"/api/v1/machines/{quote(name, safe='')}/stop")
+        return MachineInfo.from_dict(data)
 
-    async def delete_sandbox(self, name: str, force: bool = False) -> None:
-        """Delete a sandbox.
+    async def delete_machine(self, name: str, force: bool = False) -> None:
+        """Delete a machine.
 
         Args:
-            name: Sandbox name
+            name: Machine name
             force: Force delete even if VM is still running (may orphan the process)
         """
-        path = f"/api/v1/sandboxes/{quote(name, safe='')}"
+        path = f"/api/v1/machines/{quote(name, safe='')}"
         if force:
             path += "?force=true"
         await self._request("DELETE", path)
@@ -185,13 +185,13 @@ class SmolvmClient:
 
     async def exec(
         self,
-        sandbox: str,
+        machine: str,
         command: list[str],
         env: Optional[dict[str, str]] = None,
         workdir: Optional[str] = None,
         timeout_secs: Optional[int] = None,
     ) -> dict:
-        """Execute a command in the sandbox VM."""
+        """Execute a command in the machine VM."""
         body: dict[str, Any] = {"command": command}
 
         if env:
@@ -208,21 +208,21 @@ class SmolvmClient:
 
         return await self._request(
             "POST",
-            f"/api/v1/sandboxes/{quote(sandbox, safe='')}/exec",
+            f"/api/v1/machines/{quote(machine, safe='')}/exec",
             body,
             timeout=http_timeout,
         )
 
     async def run(
         self,
-        sandbox: str,
+        machine: str,
         image: str,
         command: list[str],
         env: Optional[dict[str, str]] = None,
         workdir: Optional[str] = None,
         timeout_secs: Optional[int] = None,
     ) -> dict:
-        """Run a command in a container image within the sandbox."""
+        """Run a command in a container image within the machine."""
         body: dict[str, Any] = {"image": image, "command": command}
 
         if env:
@@ -238,18 +238,18 @@ class SmolvmClient:
 
         return await self._request(
             "POST",
-            f"/api/v1/sandboxes/{quote(sandbox, safe='')}/run",
+            f"/api/v1/machines/{quote(machine, safe='')}/run",
             body,
             timeout=http_timeout,
         )
 
     async def stream_logs(
         self,
-        sandbox: str,
+        machine: str,
         follow: bool = False,
         tail: Optional[int] = None,
     ) -> AsyncIterator[str]:
-        """Stream logs from a sandbox via SSE."""
+        """Stream logs from a machine via SSE."""
         client = await self._get_client()
 
         params = {}
@@ -258,7 +258,7 @@ class SmolvmClient:
         if tail is not None:
             params["tail"] = str(tail)
 
-        url = f"/api/v1/sandboxes/{quote(sandbox, safe='')}/logs"
+        url = f"/api/v1/machines/{quote(machine, safe='')}/logs"
 
         async with client.stream(
             "GET", url, params=params, headers={"Accept": "text/event-stream"}
@@ -275,229 +275,33 @@ class SmolvmClient:
                     yield line[6:]
 
     # =========================================================================
-    # Containers
-    # =========================================================================
-
-    async def create_container(
-        self,
-        sandbox: str,
-        image: str,
-        command: Optional[list[str]] = None,
-        env: Optional[dict[str, str]] = None,
-        workdir: Optional[str] = None,
-        mounts: Optional[list[dict]] = None,
-    ) -> ContainerInfo:
-        """Create a container in a sandbox."""
-        body: dict[str, Any] = {"image": image}
-
-        if command:
-            body["command"] = command
-
-        if env:
-            body["env"] = [{"name": k, "value": v} for k, v in env.items()]
-
-        if workdir:
-            body["workdir"] = workdir
-
-        if mounts:
-            body["mounts"] = mounts
-
-        data = await self._request(
-            "POST", f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers", body
-        )
-        return ContainerInfo.from_dict(data)
-
-    async def list_containers(self, sandbox: str) -> list[ContainerInfo]:
-        """List containers in a sandbox."""
-        data = await self._request(
-            "GET", f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers"
-        )
-        return [ContainerInfo.from_dict(c) for c in data.get("containers", [])]
-
-    async def start_container(self, sandbox: str, container_id: str) -> str:
-        """Start a container.
-
-        Returns:
-            The container ID that was started.
-        """
-        data = await self._request(
-            "POST",
-            f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers/{quote(container_id, safe='')}/start",
-        )
-        return data.get("started", container_id)
-
-    async def stop_container(
-        self, sandbox: str, container_id: str, timeout_secs: Optional[int] = None
-    ) -> None:
-        """Stop a container.
-
-        Note: The API returns a simple acknowledgment. Use list_containers()
-        to verify the container state after stopping.
-        """
-        body = {"timeout_secs": timeout_secs} if timeout_secs else {}
-        await self._request(
-            "POST",
-            f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers/{quote(container_id, safe='')}/stop",
-            body,
-        )
-
-    async def delete_container(
-        self, sandbox: str, container_id: str, force: bool = False
-    ) -> None:
-        """Delete a container."""
-        body = {"force": force} if force else {}
-        await self._request(
-            "DELETE",
-            f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers/{quote(container_id, safe='')}",
-            body,
-        )
-
-    async def exec_container(
-        self,
-        sandbox: str,
-        container_id: str,
-        command: list[str],
-        env: Optional[dict[str, str]] = None,
-        workdir: Optional[str] = None,
-        timeout_secs: Optional[int] = None,
-    ) -> dict:
-        """Execute a command in a container."""
-        body: dict[str, Any] = {"command": command}
-
-        if env:
-            body["env"] = [{"name": k, "value": v} for k, v in env.items()]
-
-        if workdir:
-            body["workdir"] = workdir
-
-        if timeout_secs:
-            body["timeout_secs"] = timeout_secs
-
-        http_timeout = (timeout_secs + 10) if timeout_secs else None
-
-        return await self._request(
-            "POST",
-            f"/api/v1/sandboxes/{quote(sandbox, safe='')}/containers/{quote(container_id, safe='')}/exec",
-            body,
-            timeout=http_timeout,
-        )
-
-    # =========================================================================
     # Images
     # =========================================================================
 
-    async def list_images(self, sandbox: str) -> list[ImageInfo]:
-        """List images in a sandbox."""
+    async def list_images(self, machine: str) -> list[ImageInfo]:
+        """List images in a machine."""
         data = await self._request(
-            "GET", f"/api/v1/sandboxes/{quote(sandbox, safe='')}/images"
+            "GET", f"/api/v1/machines/{quote(machine, safe='')}/images"
         )
         return [ImageInfo.from_dict(i) for i in data.get("images", [])]
 
     async def pull_image(
         self,
-        sandbox: str,
+        machine: str,
         image: str,
         oci_platform: Optional[str] = None,
         timeout: float = 300.0,  # 5 minutes default for pulls
     ) -> ImageInfo:
-        """Pull an image into a sandbox."""
+        """Pull an image into a machine."""
         body: dict[str, Any] = {"image": image}
         if oci_platform:
             body["oci_platform"] = oci_platform
 
         data = await self._request(
             "POST",
-            f"/api/v1/sandboxes/{quote(sandbox, safe='')}/images/pull",
+            f"/api/v1/machines/{quote(machine, safe='')}/images/pull",
             body,
             timeout=timeout,
         )
         return ImageInfo.from_dict(data.get("image", data))
 
-    # =========================================================================
-    # MicroVMs
-    # =========================================================================
-
-    async def create_microvm(
-        self,
-        name: str,
-        cpus: int = 1,
-        memory_mb: int = 512,
-        mounts: Optional[list[MountSpec]] = None,
-        ports: Optional[list[PortSpec]] = None,
-        network: bool = False,
-    ) -> MicrovmInfo:
-        """Create a new microvm.
-
-        Args:
-            name: Unique name for the microvm
-            cpus: Number of vCPUs (default: 1)
-            memory_mb: Memory in MiB (default: 512)
-            mounts: Host mounts to attach
-            ports: Port mappings (host:guest)
-            network: Enable outbound network access (TCP/UDP only, not ICMP)
-
-        Returns:
-            MicrovmInfo with the created microvm details
-        """
-        body: dict[str, Any] = {
-            "name": name,
-            "cpus": cpus,
-            "memoryMb": memory_mb,
-            "network": network,
-        }
-        if mounts:
-            body["mounts"] = [
-                {"source": m.source, "target": m.target, "readonly": m.readonly} for m in mounts
-            ]
-        if ports:
-            body["ports"] = [{"host": p.host, "guest": p.guest} for p in ports]
-        data = await self._request("POST", "/api/v1/microvms", body)
-        return MicrovmInfo.from_dict(data)
-
-    async def list_microvms(self) -> list[MicrovmInfo]:
-        """List all microvms."""
-        data = await self._request("GET", "/api/v1/microvms")
-        return [MicrovmInfo.from_dict(m) for m in data.get("microvms", [])]
-
-    async def get_microvm(self, name: str) -> MicrovmInfo:
-        """Get microvm by name."""
-        data = await self._request("GET", f"/api/v1/microvms/{quote(name, safe='')}")
-        return MicrovmInfo.from_dict(data)
-
-    async def start_microvm(self, name: str) -> MicrovmInfo:
-        """Start a microvm."""
-        data = await self._request("POST", f"/api/v1/microvms/{quote(name, safe='')}/start")
-        return MicrovmInfo.from_dict(data)
-
-    async def stop_microvm(self, name: str) -> MicrovmInfo:
-        """Stop a microvm."""
-        data = await self._request("POST", f"/api/v1/microvms/{quote(name, safe='')}/stop")
-        return MicrovmInfo.from_dict(data)
-
-    async def delete_microvm(self, name: str) -> None:
-        """Delete a microvm."""
-        await self._request("DELETE", f"/api/v1/microvms/{quote(name, safe='')}")
-
-    async def exec_microvm(
-        self,
-        name: str,
-        command: list[str],
-        env: Optional[dict[str, str]] = None,
-        workdir: Optional[str] = None,
-        timeout_secs: Optional[int] = None,
-    ) -> dict:
-        """Execute a command in a microvm."""
-        body: dict[str, Any] = {"command": command}
-        if env:
-            body["env"] = [{"name": k, "value": v} for k, v in env.items()]
-        if workdir:
-            body["workdir"] = workdir
-        if timeout_secs:
-            body["timeout_secs"] = timeout_secs
-        http_timeout = (timeout_secs + 10) if timeout_secs else None
-        return await self._request(
-            "POST",
-            f"/api/v1/microvms/{quote(name, safe='')}/exec",
-            body,
-            timeout=http_timeout,
-        )

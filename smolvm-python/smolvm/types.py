@@ -10,14 +10,12 @@ from typing import Optional
 
 # Re-export generated API types
 from smolvm.generated import (
-    ContainerInfo as GeneratedContainerInfo,
     ImageInfo as GeneratedImageInfo,
-    MicrovmInfo as GeneratedMicrovmInfo,
+    SandboxInfo as GeneratedMachineInfo,  # generated code still uses old name
     MountInfo as GeneratedMountInfo,
     MountSpec as GeneratedMountSpec,
     PortSpec as GeneratedPortSpec,
     ResourceSpec as GeneratedResourceSpec,
-    SandboxInfo as GeneratedSandboxInfo,
     ExecResponse,
     HealthResponse,
 )
@@ -27,24 +25,8 @@ from smolvm.generated import (
 # ============================================================================
 
 
-class SandboxState(str, Enum):
-    """State of a sandbox."""
-
-    CREATED = "created"
-    RUNNING = "running"
-    STOPPED = "stopped"
-
-
-class ContainerState(str, Enum):
-    """State of a container."""
-
-    CREATED = "created"
-    RUNNING = "running"
-    STOPPED = "stopped"
-
-
-class MicrovmState(str, Enum):
-    """State of a microvm."""
+class MachineState(str, Enum):
+    """State of a machine."""
 
     CREATED = "created"
     RUNNING = "running"
@@ -61,7 +43,7 @@ class MountSpec:
     """Volume mount specification."""
 
     source: str  # Host path
-    target: str  # Sandbox path
+    target: str  # Machine path
     readonly: bool = False
 
 
@@ -87,7 +69,7 @@ class ResourceSpec:
 
 @dataclass
 class MountInfo:
-    """Information about a mount in a sandbox."""
+    """Information about a mount in a machine."""
 
     tag: str  # "smolvm0", "smolvm1", etc.
     source: str
@@ -96,11 +78,11 @@ class MountInfo:
 
 
 @dataclass
-class SandboxInfo:
-    """Information about a sandbox."""
+class MachineInfo:
+    """Information about a machine."""
 
     name: str
-    state: SandboxState
+    state: MachineState
     mounts: list[MountInfo]
     ports: list[PortSpec]
     resources: ResourceSpec
@@ -109,8 +91,8 @@ class SandboxInfo:
     restart_count: Optional[int] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> "SandboxInfo":
-        """Create SandboxInfo from API response dict."""
+    def from_dict(cls, data: dict) -> "MachineInfo":
+        """Create MachineInfo from API response dict."""
         mounts = [
             MountInfo(
                 tag=m["tag"],
@@ -124,40 +106,18 @@ class SandboxInfo:
         resources_data = data.get("resources", {})
         resources = ResourceSpec(
             cpus=resources_data.get("cpus"),
-            memory_mb=resources_data.get("memory_mb"),
+            memory_mb=resources_data.get("memoryMb"),
             network=resources_data.get("network"),
         )
         return cls(
             name=data["name"],
-            state=SandboxState(data["state"]),
+            state=MachineState(data["state"]),
             mounts=mounts,
             ports=ports,
             resources=resources,
             network=data.get("network", False),
             pid=data.get("pid"),
-            restart_count=data.get("restart_count"),
-        )
-
-
-@dataclass
-class ContainerInfo:
-    """Information about a container."""
-
-    id: str
-    image: str
-    state: ContainerState
-    created_at: int
-    command: list[str]
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "ContainerInfo":
-        """Create ContainerInfo from API response dict."""
-        return cls(
-            id=data["id"],
-            image=data["image"],
-            state=ContainerState(data["state"]),
-            created_at=data["created_at"],
-            command=data.get("command", []),
+            restart_count=data.get("restartCount"),
         )
 
 
@@ -181,37 +141,7 @@ class ImageInfo:
             size=data["size"],
             architecture=data["architecture"],
             os=data["os"],
-            layer_count=data["layer_count"],
-        )
-
-
-@dataclass
-class MicrovmInfo:
-    """Information about a microvm."""
-
-    name: str
-    state: MicrovmState
-    cpus: int
-    memory_mb: int
-    pid: Optional[int]
-    mounts: int
-    ports: int
-    network: bool  # Whether outbound network access is enabled
-    created_at: str
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "MicrovmInfo":
-        """Create MicrovmInfo from API response dict."""
-        return cls(
-            name=data["name"],
-            state=MicrovmState(data["state"]),
-            cpus=data["cpus"],
-            memory_mb=data["memoryMb"],
-            pid=data.get("pid"),
-            mounts=data["mounts"],
-            ports=data["ports"],
-            network=data.get("network", False),
-            created_at=data["created_at"],
+            layer_count=data["layerCount"],
         )
 
 
@@ -230,8 +160,8 @@ class ExecOptions:
 
 
 @dataclass
-class SandboxConfig:
-    """Configuration for creating a sandbox."""
+class MachineConfig:
+    """Configuration for creating a machine."""
 
     name: str
     server_url: str = "http://127.0.0.1:8080"
@@ -241,36 +171,12 @@ class SandboxConfig:
     network: bool = False  # Enable outbound network access (TCP/UDP only, not ICMP)
 
 
-@dataclass
-class ContainerMountSpec:
-    """Mount specification for containers."""
-
-    source: str  # Virtiofs tag (e.g., "smolvm0")
-    target: str
-    readonly: bool = False
-
-
-@dataclass
-class ContainerOptions:
-    """Options for creating a container."""
-
-    image: str
-    command: Optional[list[str]] = None
-    env: Optional[dict[str, str]] = None
-    workdir: Optional[str] = None
-    mounts: Optional[list[ContainerMountSpec]] = None
-
-
 # ============================================================================
 # Re-exported Generated Types (for API compatibility validation)
 # ============================================================================
 
-# These are the Pydantic models from the generated OpenAPI code.
-# They can be used for strict validation or when Pydantic integration is needed.
-GeneratedSandboxInfo = GeneratedSandboxInfo
-GeneratedContainerInfo = GeneratedContainerInfo
+GeneratedMachineInfo = GeneratedMachineInfo
 GeneratedImageInfo = GeneratedImageInfo
-GeneratedMicrovmInfo = GeneratedMicrovmInfo
 GeneratedMountInfo = GeneratedMountInfo
 GeneratedMountSpec = GeneratedMountSpec
 GeneratedPortSpec = GeneratedPortSpec

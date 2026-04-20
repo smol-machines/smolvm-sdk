@@ -1,4 +1,4 @@
-"""High-level sandbox abstraction for managing microVM sandboxes."""
+"""High-level machine abstraction for managing microVM machines."""
 
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Optional
@@ -6,52 +6,50 @@ from typing import Any, AsyncIterator, Optional
 from .client import SmolvmClient
 from .execution import ExecResult
 from .types import (
-    ContainerInfo,
-    ContainerOptions,
     ExecOptions,
     ImageInfo,
     MountInfo,
     MountSpec,
     PortSpec,
     ResourceSpec,
-    SandboxConfig,
-    SandboxInfo,
-    SandboxState,
+    MachineConfig,
+    MachineInfo,
+    MachineState,
 )
 
 
-class Sandbox:
-    """High-level sandbox abstraction for managing microVM sandboxes."""
+class Machine:
+    """High-level machine abstraction for managing microVM machines."""
 
-    def __init__(self, config: SandboxConfig):
+    def __init__(self, config: MachineConfig):
         """
-        Initialize a sandbox (does not create it yet).
+        Initialize a machine (does not create it yet).
 
-        Use `Sandbox.create()` to create and start a sandbox in one step.
+        Use `Machine.create()` to create and start a machine in one step.
 
         Args:
-            config: Sandbox configuration
+            config: Machine configuration
         """
         self.name = config.name
         self.config = config
         self.client = SmolvmClient(config.server_url)
-        self._info: Optional[SandboxInfo] = None
+        self._info: Optional[MachineInfo] = None
         self._started = False
 
     @classmethod
-    async def create(cls, config: SandboxConfig) -> "Sandbox":
+    async def create(cls, config: MachineConfig) -> "Machine":
         """
-        Create a new sandbox and start it.
+        Create a new machine and start it.
 
         Args:
-            config: Sandbox configuration
+            config: Machine configuration
 
         Returns:
-            A started Sandbox instance
+            A started Machine instance
         """
-        sandbox = cls(config)
-        await sandbox.start()
-        return sandbox
+        machine = cls(config)
+        await machine.start()
+        return machine
 
     # =========================================================================
     # Lifecycle
@@ -59,36 +57,36 @@ class Sandbox:
 
     async def start(self) -> None:
         """
-        Create and start the sandbox.
+        Create and start the machine.
 
-        If the sandbox already exists, it will be started if not already running.
+        If the machine already exists, it will be started if not already running.
         """
         if self._started:
             return
 
-        # Create the sandbox
-        self._info = await self.client.create_sandbox(
+        # Create the machine
+        self._info = await self.client.create_machine(
             name=self.config.name,
             mounts=self.config.mounts or None,
             ports=self.config.ports or None,
             resources=self.config.resources,
         )
 
-        # Start the sandbox
-        self._info = await self.client.start_sandbox(self.name)
+        # Start the machine
+        self._info = await self.client.start_machine(self.name)
         self._started = True
 
     async def stop(self) -> None:
-        """Stop the sandbox."""
+        """Stop the machine."""
         if not self._started:
             return
 
-        self._info = await self.client.stop_sandbox(self.name)
+        self._info = await self.client.stop_machine(self.name)
         self._started = False
 
     async def delete(self) -> None:
-        """Delete the sandbox."""
-        await self.client.delete_sandbox(self.name)
+        """Delete the machine."""
+        await self.client.delete_machine(self.name)
         self._info = None
         self._started = False
 
@@ -96,7 +94,7 @@ class Sandbox:
         """Close the client connection."""
         await self.client.close()
 
-    async def __aenter__(self) -> "Sandbox":
+    async def __aenter__(self) -> "Machine":
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -114,29 +112,29 @@ class Sandbox:
     # Status
     # =========================================================================
 
-    async def status(self) -> SandboxInfo:
-        """Get the current sandbox status."""
-        self._info = await self.client.get_sandbox(self.name)
+    async def status(self) -> MachineInfo:
+        """Get the current machine status."""
+        self._info = await self.client.get_machine(self.name)
         return self._info
 
     @property
     def is_started(self) -> bool:
-        """Whether the sandbox has been started."""
+        """Whether the machine has been started."""
         return self._started
 
     @property
-    def state(self) -> Optional[SandboxState]:
-        """Get the current sandbox state."""
+    def state(self) -> Optional[MachineState]:
+        """Get the current machine state."""
         return self._info.state if self._info else None
 
     @property
     def mounts(self) -> list[MountInfo]:
-        """Get the sandbox mounts."""
+        """Get the machine mounts."""
         return self._info.mounts if self._info else []
 
     @property
-    def info(self) -> Optional[SandboxInfo]:
-        """Get the raw sandbox info."""
+    def info(self) -> Optional[MachineInfo]:
+        """Get the raw machine info."""
         return self._info
 
     # =========================================================================
@@ -151,7 +149,7 @@ class Sandbox:
         timeout: Optional[int] = None,
     ) -> ExecResult:
         """
-        Execute a command directly in the sandbox VM.
+        Execute a command directly in the machine VM.
 
         Args:
             command: Command and arguments to execute
@@ -180,7 +178,7 @@ class Sandbox:
         timeout: Optional[int] = None,
     ) -> ExecResult:
         """
-        Run a command in a container image within the sandbox.
+        Run a command in a container image within the machine.
 
         Args:
             image: OCI image reference (e.g., "python:3.12-alpine")
@@ -212,7 +210,7 @@ class Sandbox:
         tail: Optional[int] = None,
     ) -> AsyncIterator[str]:
         """
-        Stream logs from the sandbox.
+        Stream logs from the machine.
 
         Args:
             follow: Keep streaming new logs
@@ -225,91 +223,17 @@ class Sandbox:
             yield line
 
     # =========================================================================
-    # Containers
-    # =========================================================================
-
-    async def create_container(self, options: ContainerOptions) -> ContainerInfo:
-        """
-        Create a container in the sandbox.
-
-        Args:
-            options: Container options
-
-        Returns:
-            ContainerInfo
-        """
-        mounts = None
-        if options.mounts:
-            mounts = [
-                {"source": m.source, "target": m.target, "readonly": m.readonly}
-                for m in options.mounts
-            ]
-
-        return await self.client.create_container(
-            self.name,
-            image=options.image,
-            command=options.command,
-            env=options.env,
-            workdir=options.workdir,
-            mounts=mounts,
-        )
-
-    async def list_containers(self) -> list[ContainerInfo]:
-        """List all containers in the sandbox."""
-        return await self.client.list_containers(self.name)
-
-    async def start_container(self, container_id: str) -> str:
-        """Start a container.
-
-        Returns:
-            The container ID that was started.
-        """
-        return await self.client.start_container(self.name, container_id)
-
-    async def stop_container(
-        self, container_id: str, timeout: Optional[int] = None
-    ) -> None:
-        """Stop a container.
-
-        Note: Use list_containers() to verify the container state after stopping.
-        """
-        await self.client.stop_container(self.name, container_id, timeout)
-
-    async def delete_container(self, container_id: str, force: bool = False) -> None:
-        """Delete a container."""
-        await self.client.delete_container(self.name, container_id, force)
-
-    async def exec_container(
-        self,
-        container_id: str,
-        command: list[str],
-        env: Optional[dict[str, str]] = None,
-        workdir: Optional[str] = None,
-        timeout: Optional[int] = None,
-    ) -> ExecResult:
-        """Execute a command in a container."""
-        response = await self.client.exec_container(
-            self.name,
-            container_id,
-            command,
-            env=env,
-            workdir=workdir,
-            timeout_secs=timeout,
-        )
-        return ExecResult.from_dict(response)
-
-    # =========================================================================
     # Images
     # =========================================================================
 
     async def list_images(self) -> list[ImageInfo]:
-        """List all images in the sandbox."""
+        """List all images in the machine."""
         return await self.client.list_images(self.name)
 
     async def pull_image(
         self, image: str, oci_platform: Optional[str] = None
     ) -> ImageInfo:
-        """Pull an image into the sandbox."""
+        """Pull an image into the machine."""
         return await self.client.pull_image(self.name, image, oci_platform)
 
 
@@ -319,30 +243,30 @@ class Sandbox:
 
 
 @asynccontextmanager
-async def with_sandbox(config: SandboxConfig):
+async def with_machine(config: MachineConfig):
     """
-    Create a sandbox, yield it, and clean up afterwards.
+    Create a machine, yield it, and clean up afterwards.
 
-    This is the recommended way to use sandboxes for short-lived tasks.
+    This is the recommended way to use machines for short-lived tasks.
 
     Example:
-        async with with_sandbox(SandboxConfig(name="test")) as sandbox:
-            result = await sandbox.exec(["echo", "hello"])
+        async with with_machine(MachineConfig(name="test")) as machine:
+            result = await machine.exec(["echo", "hello"])
             print(result.stdout)
     """
-    sandbox = await Sandbox.create(config)
+    machine = await Machine.create(config)
     try:
-        yield sandbox
+        yield machine
     finally:
         try:
-            await sandbox.stop()
+            await machine.stop()
         except Exception:
             pass
         try:
-            await sandbox.delete()
+            await machine.delete()
         except Exception:
             pass
-        await sandbox.close()
+        await machine.close()
 
 
 async def quick_exec(
@@ -355,11 +279,11 @@ async def quick_exec(
     timeout: Optional[int] = None,
 ) -> ExecResult:
     """
-    Quick execution helper - creates a temporary sandbox, runs a command, and cleans up.
+    Quick execution helper - creates a temporary machine, runs a command, and cleans up.
 
     Args:
         command: Command to execute
-        name: Sandbox name (auto-generated if not provided)
+        name: Machine name (auto-generated if not provided)
         server_url: smolvm server URL
         mounts: Volume mounts
         env: Environment variables
@@ -371,14 +295,14 @@ async def quick_exec(
     """
     import time
 
-    config = SandboxConfig(
+    config = MachineConfig(
         name=name or f"quick-exec-{int(time.time() * 1000)}",
         server_url=server_url,
         mounts=mounts or [],
     )
 
-    async with with_sandbox(config) as sandbox:
-        return await sandbox.exec(command, env=env, workdir=workdir, timeout=timeout)
+    async with with_machine(config) as machine:
+        return await machine.exec(command, env=env, workdir=workdir, timeout=timeout)
 
 
 async def quick_run(
@@ -392,12 +316,12 @@ async def quick_run(
     timeout: Optional[int] = None,
 ) -> ExecResult:
     """
-    Quick run helper - creates a temporary sandbox, runs in an image, and cleans up.
+    Quick run helper - creates a temporary machine, runs in an image, and cleans up.
 
     Args:
         image: OCI image reference
         command: Command to execute
-        name: Sandbox name (auto-generated if not provided)
+        name: Machine name (auto-generated if not provided)
         server_url: smolvm server URL
         mounts: Volume mounts
         env: Environment variables
@@ -409,11 +333,11 @@ async def quick_run(
     """
     import time
 
-    config = SandboxConfig(
+    config = MachineConfig(
         name=name or f"quick-run-{int(time.time() * 1000)}",
         server_url=server_url,
         mounts=mounts or [],
     )
 
-    async with with_sandbox(config) as sandbox:
-        return await sandbox.run(image, command, env=env, workdir=workdir, timeout=timeout)
+    async with with_machine(config) as machine:
+        return await machine.run(image, command, env=env, workdir=workdir, timeout=timeout)

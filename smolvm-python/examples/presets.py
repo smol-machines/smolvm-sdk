@@ -3,39 +3,39 @@
 
 import asyncio
 
-from smolvm.presets import python_sandbox, node_sandbox
+from smolvm.presets import python_machine, node_machine
 
 
 async def main():
     # Python preset
-    print("=== Python Sandbox ===")
-    result = await python_sandbox("""
+    print("=== Python Machine ===")
+    result = await python_machine("""
 import sys
 import json
 
 data = {"language": "Python", "version": sys.version_info[:2]}
 print(json.dumps(data, indent=2))
-print("Hello from Python sandbox!")
+print("Hello from Python machine!")
 """)
     print(result.stdout)
     print()
 
     # Node.js preset
-    print("=== Node.js Sandbox ===")
-    result = await node_sandbox("""
+    print("=== Node.js Machine ===")
+    result = await node_machine("""
 const data = {
     language: "JavaScript",
     version: process.version
 };
 console.log(JSON.stringify(data, null, 2));
-console.log("Hello from Node.js sandbox!");
+console.log("Hello from Node.js machine!");
 """)
     print(result.stdout)
     print()
 
     # Python with error handling
     print("=== Python with Error ===")
-    result = await python_sandbox("""
+    result = await python_machine("""
 import sys
 print("This will print")
 sys.exit(1)

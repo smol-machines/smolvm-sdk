@@ -40,7 +40,7 @@ class ExecResult:
     def from_dict(cls, data: dict) -> "ExecResult":
         """Create ExecResult from API response dict."""
         return cls(
-            exit_code=data["exit_code"],
+            exit_code=data["exitCode"],
             stdout=data.get("stdout", ""),
             stderr=data.get("stderr", ""),
         )

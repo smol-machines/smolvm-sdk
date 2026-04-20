@@ -3,7 +3,7 @@
 
 import asyncio
 
-from smolvm import Sandbox, SandboxConfig, quick_exec
+from smolvm import Machine, MachineConfig, quick_exec
 
 
 async def main():
@@ -14,19 +14,19 @@ async def main():
     print(f"Exit code: {result.exit_code}")
     print()
 
-    # Using Sandbox with context manager
-    print("=== Sandbox Context Manager ===")
-    config = SandboxConfig(name="example-sandbox")
+    # Using Machine with context manager
+    print("=== Machine Context Manager ===")
+    config = MachineConfig(name="example-machine")
 
-    async with Sandbox(config) as sandbox:
-        await sandbox.start()
+    async with Machine(config) as machine:
+        await machine.start()
 
         # Run commands directly in the VM
-        result = await sandbox.exec(["uname", "-a"])
+        result = await machine.exec(["uname", "-a"])
         print(f"VM info: {result.stdout}")
 
         # Run multiple commands
-        result = await sandbox.exec(["ls", "-la", "/"])
+        result = await machine.exec(["ls", "-la", "/"])
         print(f"Root directory:\n{result.stdout}")
 
 

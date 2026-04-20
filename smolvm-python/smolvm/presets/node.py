@@ -1,13 +1,13 @@
-"""Node.js sandbox preset."""
+"""Node.js machine preset."""
 
 from typing import Optional
 
 from ..execution import ExecResult
-from ..sandbox import with_sandbox
-from ..types import MountSpec, ResourceSpec, SandboxConfig
+from ..machine import with_machine
+from ..types import MountSpec, ResourceSpec, MachineConfig
 
 
-async def node_sandbox(
+async def node_machine(
     code: str,
     name: Optional[str] = None,
     server_url: str = "http://127.0.0.1:8080",
@@ -18,11 +18,11 @@ async def node_sandbox(
     memory_mb: int = 512,
 ) -> ExecResult:
     """
-    Execute JavaScript code in an isolated Node.js sandbox.
+    Execute JavaScript code in an isolated Node.js machine.
 
     Args:
         code: JavaScript code to execute
-        name: Sandbox name (auto-generated if not provided)
+        name: Machine name (auto-generated if not provided)
         server_url: smolvm server URL
         mounts: Volume mounts
         image: Node.js image to use (default: node:22-alpine)
@@ -34,23 +34,23 @@ async def node_sandbox(
         ExecResult with exit_code, stdout, stderr
 
     Example:
-        result = await node_sandbox('''
+        result = await node_machine('''
             console.log("Node.js version:", process.version);
-            console.log("Hello from sandbox!");
+            console.log("Hello from machine!");
         ''')
         print(result.stdout)
     """
     import time
 
-    config = SandboxConfig(
+    config = MachineConfig(
         name=name or f"node-{int(time.time() * 1000)}",
         server_url=server_url,
         mounts=mounts or [],
         resources=ResourceSpec(cpus=cpus, memory_mb=memory_mb),
     )
 
-    async with with_sandbox(config) as sandbox:
-        return await sandbox.run(
+    async with with_machine(config) as machine:
+        return await machine.run(
             image=image,
             command=["node", "-e", code],
             timeout=timeout,
@@ -68,13 +68,13 @@ async def node_file(
     memory_mb: int = 512,
 ) -> ExecResult:
     """
-    Execute a JavaScript file in an isolated Node.js sandbox.
+    Execute a JavaScript file in an isolated Node.js machine.
 
     The file's directory is automatically mounted if mount_dir is not specified.
 
     Args:
         file_path: Path to the JavaScript file
-        name: Sandbox name (auto-generated if not provided)
+        name: Machine name (auto-generated if not provided)
         server_url: smolvm server URL
         mount_dir: Directory to mount (defaults to file's parent directory)
         image: Node.js image to use
@@ -101,15 +101,15 @@ async def node_file(
     # Calculate the relative path of the file within the mount
     rel_path = os.path.relpath(file_path, mount_dir)
 
-    config = SandboxConfig(
+    config = MachineConfig(
         name=name or f"node-file-{int(time.time() * 1000)}",
         server_url=server_url,
         mounts=[MountSpec(source=mount_dir, target="/workspace")],
         resources=ResourceSpec(cpus=cpus, memory_mb=memory_mb),
     )
 
-    async with with_sandbox(config) as sandbox:
-        return await sandbox.run(
+    async with with_machine(config) as machine:
+        return await machine.run(
             image=image,
             command=["node", f"/workspace/{rel_path}"],
             workdir="/workspace",
@@ -128,12 +128,12 @@ async def npm_run(
     memory_mb: int = 512,
 ) -> ExecResult:
     """
-    Run an npm script in an isolated sandbox.
+    Run an npm script in an isolated machine.
 
     Args:
         script: npm script name to run (e.g., "test", "build")
         project_dir: Path to the project directory (containing package.json)
-        name: Sandbox name (auto-generated if not provided)
+        name: Machine name (auto-generated if not provided)
         server_url: smolvm server URL
         image: Node.js image to use
         timeout: Execution timeout in seconds
@@ -152,15 +152,15 @@ async def npm_run(
 
     project_dir = os.path.abspath(project_dir)
 
-    config = SandboxConfig(
+    config = MachineConfig(
         name=name or f"npm-{int(time.time() * 1000)}",
         server_url=server_url,
         mounts=[MountSpec(source=project_dir, target="/workspace")],
         resources=ResourceSpec(cpus=cpus, memory_mb=memory_mb),
     )
 
-    async with with_sandbox(config) as sandbox:
-        return await sandbox.run(
+    async with with_machine(config) as machine:
+        return await machine.run(
             image=image,
             command=["npm", "run", script],
             workdir="/workspace",

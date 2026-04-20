@@ -1,9 +1,9 @@
-"""Pre-configured sandbox presets for common use cases."""
+"""Pre-configured machine presets for common use cases."""
 
-from .node import node_sandbox
-from .python import python_sandbox
+from .node import node_machine
+from .python import python_machine
 
 __all__ = [
-    "python_sandbox",
-    "node_sandbox",
+    "python_machine",
+    "node_machine",
 ]

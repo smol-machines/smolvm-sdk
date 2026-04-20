@@ -4,8 +4,8 @@
 import asyncio
 
 from smolvm import (
-    Sandbox,
-    SandboxConfig,
+    Machine,
+    MachineConfig,
     quick_exec,
     SmolvmError,
     ConnectionError,
@@ -46,16 +46,16 @@ async def main():
         print(f"Command failed with exit code {result.exit_code}")
     print()
 
-    # Example 4: Non-existent sandbox
+    # Example 4: Non-existent machine
     print("=== Not Found Error ===")
-    config = SandboxConfig(name="nonexistent-sandbox-12345")
-    sandbox = Sandbox(config)
+    config = MachineConfig(name="nonexistent-machine-12345")
+    machine = Machine(config)
     try:
-        # Try to get status of a sandbox that doesn't exist
-        await sandbox.status()
+        # Try to get status of a machine that doesn't exist
+        await machine.status()
     except NotFoundError as e:
-        print(f"Sandbox not found (expected): {e}")
-    await sandbox.close()
+        print(f"Machine not found (expected): {e}")
+    await machine.close()
     print()
 
     # Example 5: Generic error handling

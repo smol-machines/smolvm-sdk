@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Example of running containers within a smolvm sandbox."""
+"""Example of running containers within a smolvm machine."""
 
 import asyncio
 
-from smolvm import Sandbox, SandboxConfig, quick_run
+from smolvm import Machine, MachineConfig, quick_run
 
 
 async def main():
@@ -16,20 +16,20 @@ async def main():
     print(f"Output: {result.stdout}")
     print()
 
-    # Using Sandbox for more control
-    print("=== Sandbox with Multiple Containers ===")
-    config = SandboxConfig(name="container-example")
+    # Using Machine for more control
+    print("=== Machine with Multiple Containers ===")
+    config = MachineConfig(name="container-example")
 
-    async with Sandbox(config) as sandbox:
-        await sandbox.start()
+    async with Machine(config) as machine:
+        await machine.start()
 
         # Pull images first (optional, happens automatically on run)
         print("Pulling alpine image...")
-        await sandbox.pull_image("alpine:latest")
+        await machine.pull_image("alpine:latest")
 
         # Run Python code
         print("\nRunning Python:")
-        result = await sandbox.run(
+        result = await machine.run(
             image="python:3.12-alpine",
             command=["python", "-c", "print('Hello from Python!')"],
         )
@@ -37,7 +37,7 @@ async def main():
 
         # Run Node.js code
         print("\nRunning Node.js:")
-        result = await sandbox.run(
+        result = await machine.run(
             image="node:22-alpine",
             command=["node", "-e", "console.log('Hello from Node.js!')"],
         )
@@ -45,7 +45,7 @@ async def main():
 
         # Run shell commands in Alpine
         print("\nRunning Alpine shell:")
-        result = await sandbox.run(
+        result = await machine.run(
             image="alpine:latest",
             command=["sh", "-c", "echo 'Hello from Alpine!' && cat /etc/os-release | head -2"],
         )

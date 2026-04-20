@@ -10,9 +10,9 @@ from smolvm.types import (
     MountSpec,
     PortSpec,
     ResourceSpec,
-    SandboxConfig,
-    SandboxInfo,
-    SandboxState,
+    MachineConfig,
+    MachineInfo,
+    MachineState,
 )
 
 
@@ -47,9 +47,9 @@ class TestResourceSpec:
         assert resources.memory_mb == 2048
 
 
-class TestSandboxConfig:
+class TestMachineConfig:
     def test_minimal_config(self):
-        config = SandboxConfig(name="test")
+        config = MachineConfig(name="test")
         assert config.name == "test"
         assert config.server_url == "http://127.0.0.1:8080"
         assert config.mounts == []
@@ -57,7 +57,7 @@ class TestSandboxConfig:
         assert config.resources is None
 
     def test_full_config(self):
-        config = SandboxConfig(
+        config = MachineConfig(
             name="test",
             server_url="http://localhost:9000",
             mounts=[MountSpec(source="/a", target="/b")],
@@ -71,22 +71,22 @@ class TestSandboxConfig:
         assert config.resources.cpus == 2
 
 
-class TestSandboxInfo:
+class TestMachineInfo:
     def test_from_dict_minimal(self):
         data = {
-            "name": "test-sandbox",
+            "name": "test-machine",
             "state": "running",
         }
-        info = SandboxInfo.from_dict(data)
-        assert info.name == "test-sandbox"
-        assert info.state == SandboxState.RUNNING
+        info = MachineInfo.from_dict(data)
+        assert info.name == "test-machine"
+        assert info.state == MachineState.RUNNING
         assert info.mounts == []
         assert info.ports == []
         assert info.pid is None
 
     def test_from_dict_full(self):
         data = {
-            "name": "test-sandbox",
+            "name": "test-machine",
             "state": "running",
             "mounts": [
                 {"tag": "smolvm0", "source": "/host", "target": "/guest", "readonly": True}
@@ -97,9 +97,9 @@ class TestSandboxInfo:
             "uptimeSecs": 100,
             "restartCount": 0,
         }
-        info = SandboxInfo.from_dict(data)
-        assert info.name == "test-sandbox"
-        assert info.state == SandboxState.RUNNING
+        info = MachineInfo.from_dict(data)
+        assert info.name == "test-machine"
+        assert info.state == MachineState.RUNNING
         assert len(info.mounts) == 1
         assert info.mounts[0].tag == "smolvm0"
         assert info.mounts[0].readonly is True
@@ -136,7 +136,7 @@ class TestImageInfo:
             "size": 50000000,
             "architecture": "amd64",
             "os": "linux",
-            "layer_count": 5,
+            "layerCount": 5,
         }
         info = ImageInfo.from_dict(data)
         assert info.reference == "python:3.12-alpine"
@@ -147,11 +147,11 @@ class TestImageInfo:
         assert info.layer_count == 5
 
 
-class TestSandboxState:
+class TestMachineState:
     def test_values(self):
-        assert SandboxState.CREATED == "created"
-        assert SandboxState.RUNNING == "running"
-        assert SandboxState.STOPPED == "stopped"
+        assert MachineState.CREATED == "created"
+        assert MachineState.RUNNING == "running"
+        assert MachineState.STOPPED == "stopped"
 
 
 class TestContainerState:

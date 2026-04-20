@@ -8,14 +8,14 @@ from smolvm.errors import ExecutionError
 
 class TestExecResult:
     def test_from_dict(self):
-        data = {"exit_code": 0, "stdout": "hello\n", "stderr": ""}
+        data = {"exitCode": 0, "stdout": "hello\n", "stderr": ""}
         result = ExecResult.from_dict(data)
         assert result.exit_code == 0
         assert result.stdout == "hello\n"
         assert result.stderr == ""
 
     def test_from_dict_missing_output(self):
-        data = {"exit_code": 1}
+        data = {"exitCode": 1}
         result = ExecResult.from_dict(data)
         assert result.exit_code == 1
         assert result.stdout == ""
