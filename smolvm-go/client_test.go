@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -319,4 +322,112 @@ func TestClientContextCancellation(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Health did not return after context cancellation")
 	}
+}
+
+func TestClientUnixSocket(t *testing.T) {
+	sockPath := filepath.Join(t.TempDir(), "smolvm.sock")
+	ln, err := net.Listen("unix", sockPath)
+	if err != nil {
+		t.Fatalf("listen unix: %v", err)
+	}
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/health" {
+			t.Errorf("path: %s", r.URL.Path)
+		}
+		if r.Host != "unix" {
+			t.Errorf("Host header = %q, want unix", r.Host)
+		}
+		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "ok", Version: "test"})
+	})}
+	go func() { _ = srv.Serve(ln) }()
+	defer func() {
+		_ = srv.Close()
+	}()
+
+	c := NewClient("unix://" + sockPath)
+	got, err := c.Health(context.Background())
+	if err != nil {
+		t.Fatalf("Health: %v", err)
+	}
+	if got.Status != "ok" {
+		t.Errorf("Health = %+v", got)
+	}
+}
+
+func TestUnixSocketPathParse(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+		ok   bool
+	}{
+		{"unix:///run/smolvm.sock", "/run/smolvm.sock", true},
+		{"unix:/run/smolvm.sock", "/run/smolvm.sock", true},
+		{"http://127.0.0.1:8080", "", false},
+		{"https://example.com", "", false},
+		{"", "", false},
+	}
+	for _, tc := range cases {
+		got, ok := unixSocketPath(tc.in)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("unixSocketPath(%q) = (%q, %v), want (%q, %v)", tc.in, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+func TestClientUnixKeepsHTTPFields(t *testing.T) {
+	// WithHTTPClient(&http.Client{Timeout: ...}) + unix:// must keep the
+	// caller's Timeout while still installing the unix-dialing transport.
+	// Use a short /tmp path to stay under macOS' 104-byte sun_path limit.
+	f, err := os.CreateTemp("/tmp", "smv-*.sock")
+	if err != nil {
+		t.Fatalf("temp sock: %v", err)
+	}
+	sockPath := f.Name()
+	_ = f.Close()
+	_ = os.Remove(sockPath)
+	t.Cleanup(func() { _ = os.Remove(sockPath) })
+
+	ln, err := net.Listen("unix", sockPath)
+	if err != nil {
+		t.Fatalf("listen unix: %v", err)
+	}
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
+	})}
+	go func() { _ = srv.Serve(ln) }()
+	defer srv.Close()
+
+	supplied := &http.Client{Timeout: 7 * time.Second}
+	c := NewClient("unix://"+sockPath, WithHTTPClient(supplied))
+
+	if _, err := c.Health(context.Background()); err != nil {
+		t.Fatalf("Health: %v", err)
+	}
+	if supplied.Timeout != 7*time.Second {
+		t.Errorf("Timeout was reset to %v", supplied.Timeout)
+	}
+	if supplied.Transport == nil {
+		t.Errorf("Transport was not installed")
+	}
+}
+
+type stubHTTPClient struct{}
+
+func (stubHTTPClient) Do(*http.Request) (*http.Response, error) { return nil, nil }
+
+func TestClientUnixPanicsOnCustomHTTP(t *testing.T) {
+	// A non-*http.Client implementation of HTTPClient cannot have its dialer
+	// rewritten, so unix:// + that combination must fail loudly at
+	// construction rather than silently TCP-dialing at request time.
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic, got none")
+		}
+		msg, _ := r.(string)
+		if !strings.Contains(msg, "unix") {
+			t.Errorf("panic message = %q; want it to mention unix", msg)
+		}
+	}()
+	NewClient("unix:///tmp/does-not-matter.sock", WithHTTPClient(stubHTTPClient{}))
 }

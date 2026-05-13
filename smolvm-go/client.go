@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -47,6 +48,16 @@ func WithHTTPClient(h HTTPClient) ClientOption {
 // NewClient creates a Client targeting baseURL (defaults to DefaultServerURL
 // when empty). The default *http.Client has no timeout — per-request deadlines
 // are applied via the request context.
+//
+// baseURL may be:
+//   - http://host:port or https://host:port — standard TCP HTTP
+//   - unix:///path/to/socket — connects to the smolvm server over a Unix
+//     domain socket. The path after the unix:// scheme is used as the
+//     socket; URL building uses http://unix as the synthetic host so any
+//     Go http.Request remains valid. When combined with WithHTTPClient,
+//     the caller's *http.Client fields (Timeout, CheckRedirect, …) are
+//     preserved but Transport is replaced with a unix-dialing one; a
+//     non-*http.Client HTTPClient cannot be retrofitted and will panic.
 func NewClient(baseURL string, opts ...ClientOption) *Client {
 	if baseURL == "" {
 		baseURL = DefaultServerURL
@@ -58,7 +69,37 @@ func NewClient(baseURL string, opts ...ClientOption) *Client {
 	for _, opt := range opts {
 		opt(c)
 	}
+	if socketPath, ok := unixSocketPath(baseURL); ok {
+		c.baseURL = "http://unix"
+		// Install a unix-dialing transport on the *http.Client, preserving
+		// fields like Timeout/CheckRedirect. We clobber Transport because a
+		// TCP-dialing transport cannot reach an AF_UNIX socket. If a caller
+		// supplied a custom HTTPClient (not *http.Client), we cannot inject
+		// the dialer — that combination is a programmer error.
+		h, ok := c.http.(*http.Client)
+		if !ok {
+			panic("smolvm: unix:// baseURL requires *http.Client; WithHTTPClient was given a custom HTTPClient that cannot dial AF_UNIX")
+		}
+		h.Transport = &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", socketPath)
+			},
+		}
+	}
 	return c
+}
+
+// unixSocketPath returns the filesystem path of a unix:// URL, if the input
+// is one. Accepted forms are unix:///abs/path and unix:/abs/path.
+func unixSocketPath(s string) (string, bool) {
+	if strings.HasPrefix(s, "unix://") {
+		return strings.TrimPrefix(s, "unix://"), true
+	}
+	if strings.HasPrefix(s, "unix:") {
+		return strings.TrimPrefix(s, "unix:"), true
+	}
+	return "", false
 }
 
 // BaseURL returns the configured server URL.
