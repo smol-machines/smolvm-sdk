@@ -191,3 +191,72 @@ func TestEnvVarSliceContainsAllPairs(t *testing.T) {
 		t.Errorf("unexpected map: %v", seen)
 	}
 }
+
+func TestMachineStartForwardsV1Config(t *testing.T) {
+	var gotCreate CreateMachineRequest
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/machines", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotCreate)
+		_ = json.NewEncoder(w).Encode(MachineInfo{Name: gotCreate.Name, State: MachineStateCreated})
+	})
+	mux.HandleFunc("/api/v1/machines/", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(MachineInfo{Name: "vm1", State: MachineStateRunning})
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	maxRetries := 3
+	m := NewMachine(Config{
+		Name:                  "vm1",
+		ServerURL:             srv.URL,
+		GPU:                   true,
+		RegistryRef:           "myapp:v1",
+		RegistryIdentityToken: "tok",
+		Restart:               &RestartSpec{Policy: "always", MaxRetries: &maxRetries},
+	})
+	if err := m.Start(context.Background()); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	if !gotCreate.GPU {
+		t.Errorf("GPU not forwarded")
+	}
+	if gotCreate.RegistryRef != "myapp:v1" || gotCreate.RegistryIdentityToken != "tok" {
+		t.Errorf("registry fields not forwarded: %+v", gotCreate)
+	}
+	if gotCreate.Restart == nil || gotCreate.Restart.Policy != "always" ||
+		gotCreate.Restart.MaxRetries == nil || *gotCreate.Restart.MaxRetries != 3 {
+		t.Errorf("restart not forwarded: %+v", gotCreate.Restart)
+	}
+}
+
+func TestMachineExecForwardsStdin(t *testing.T) {
+	var gotExec ExecRequest
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/machines", func(w http.ResponseWriter, r *http.Request) {
+		var req CreateMachineRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewEncoder(w).Encode(MachineInfo{Name: req.Name, State: MachineStateCreated})
+	})
+	mux.HandleFunc("/api/v1/machines/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/exec") {
+			_ = json.NewDecoder(r.Body).Decode(&gotExec)
+			_ = json.NewEncoder(w).Encode(ExecResponse{ExitCode: 0, Stdout: "ok"})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(MachineInfo{Name: "vm1", State: MachineStateRunning})
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	m, err := CreateMachine(context.Background(), Config{Name: "vm1", ServerURL: srv.URL})
+	if err != nil {
+		t.Fatalf("CreateMachine: %v", err)
+	}
+	if _, err := m.Exec(context.Background(), []string{"cat"}, ExecOptions{Stdin: "piped-in"}); err != nil {
+		t.Fatalf("Exec: %v", err)
+	}
+	if gotExec.Stdin != "piped-in" {
+		t.Errorf("stdin not forwarded: %q", gotExec.Stdin)
+	}
+}
