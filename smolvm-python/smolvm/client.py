@@ -102,6 +102,7 @@ class SmolvmClient:
     async def create_machine(
         self,
         name: str,
+        image: Optional[str] = None,
         mounts: Optional[list[MountSpec]] = None,
         ports: Optional[list[PortSpec]] = None,
         resources: Optional[ResourceSpec] = None,
@@ -111,6 +112,9 @@ class SmolvmClient:
 
         Args:
             name: Unique name for the machine
+            image: OCI image to boot the machine from. Its CMD/entrypoint runs as
+                the machine's persistent workload — bake a warm process (a server,
+                a REPL) into the image to pre-warm a forkable golden.
             mounts: Host mounts to attach
             ports: Port mappings (host:guest)
             resources: VM resource configuration (cpus, memory)
@@ -119,7 +123,18 @@ class SmolvmClient:
         Returns:
             MachineInfo with the created machine details
         """
-        body: dict[str, Any] = {"name": name}
+        # The server's create request takes cpus/mem/network/image at the top
+        # level (camelCase), not nested under "resources".
+        body: dict[str, Any] = {"name": name, "network": network}
+
+        if image:
+            body["image"] = image
+
+        if resources:
+            if resources.cpus is not None:
+                body["cpus"] = resources.cpus
+            if resources.memory_mb is not None:
+                body["mem"] = resources.memory_mb
 
         if mounts:
             body["mounts"] = [
@@ -128,21 +143,6 @@ class SmolvmClient:
 
         if ports:
             body["ports"] = [{"host": p.host, "guest": p.guest} for p in ports]
-
-        if resources or network:
-            res: dict[str, Any] = {}
-            if resources:
-                if resources.cpus is not None:
-                    res["cpus"] = resources.cpus
-                if resources.memory_mb is not None:
-                    res["memory_mb"] = resources.memory_mb
-                if resources.network is not None:
-                    res["network"] = resources.network
-            # Explicit network param overrides resources.network
-            if network:
-                res["network"] = True
-            if res:
-                body["resources"] = res
 
         data = await self._request("POST", "/api/v1/machines", body)
         return MachineInfo.from_dict(data)
@@ -157,9 +157,45 @@ class SmolvmClient:
         data = await self._request("GET", f"/api/v1/machines/{quote(name, safe='')}")
         return MachineInfo.from_dict(data)
 
-    async def start_machine(self, name: str) -> MachineInfo:
-        """Start a machine."""
-        data = await self._request("POST", f"/api/v1/machines/{quote(name, safe='')}/start")
+    async def start_machine(self, name: str, forkable: bool = False) -> MachineInfo:
+        """Start a machine.
+
+        Args:
+            name: Machine to start.
+            forkable: Start as a fork base — back the guest RAM with a
+                copy-on-write memfd and expose a control socket, so the machine
+                can later be forked with `fork_machine`. The golden freezes after
+                its first fork (clones CoW-map its RAM), so treat it as a
+                read-only warm checkpoint once you start forking.
+        """
+        path = f"/api/v1/machines/{quote(name, safe='')}/start"
+        if forkable:
+            path += "?forkable=true"
+        data = await self._request("POST", path)
+        return MachineInfo.from_dict(data)
+
+    async def fork_machine(
+        self, golden: str, clone: str, ports: Optional[list[PortSpec]] = None
+    ) -> MachineInfo:
+        """Fork a running, forkable golden machine into a new clone.
+
+        The clone boots from the golden's live, copy-on-write memory snapshot —
+        no cold start — inheriting the golden's warm workload. `golden` must have
+        been started with `forkable=True`.
+
+        Args:
+            golden: Name of the running, forkable golden machine.
+            clone: Name for the new clone.
+            ports: Pin the clone's inbound port forwards. Without this, the
+                golden's forwards are remapped to freshly-allocated host ports so
+                the clone doesn't collide with the golden or sibling clones.
+        """
+        body: dict[str, Any] = {"name": clone}
+        if ports:
+            body["ports"] = [{"host": p.host, "guest": p.guest} for p in ports]
+        data = await self._request(
+            "POST", f"/api/v1/machines/{quote(golden, safe='')}/fork", body
+        )
         return MachineInfo.from_dict(data)
 
     async def stop_machine(self, name: str) -> MachineInfo:

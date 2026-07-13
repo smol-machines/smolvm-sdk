@@ -1,6 +1,9 @@
 """High-level machine abstraction for managing microVM machines."""
 
+import asyncio
+import uuid
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from typing import Any, AsyncIterator, Optional
 
 from .client import SmolvmClient
@@ -67,14 +70,60 @@ class Machine:
         # Create the machine
         self._info = await self.client.create_machine(
             name=self.config.name,
+            image=self.config.image,
             mounts=self.config.mounts or None,
             ports=self.config.ports or None,
             resources=self.config.resources,
+            network=self.config.network,
         )
 
-        # Start the machine
-        self._info = await self.client.start_machine(self.name)
+        # Start the machine (forkable => warm checkpoint, see fork()/branch())
+        self._info = await self.client.start_machine(self.name, forkable=self.config.forkable)
         self._started = True
+
+    # =========================================================================
+    # Fork / checkpoint  (warm-clone the machine for agent pools & RL rollback)
+    # =========================================================================
+    #
+    # Model: a machine started with ``forkable=True`` is a warm CHECKPOINT — a
+    # frozen, resident base. ``fork()``/``branch()`` clone it from live memory
+    # (no cold start), inheriting its warm workload. To "roll back" a clone to
+    # the checkpoint, delete it and fork a fresh one. The golden freezes after
+    # its first fork (clones copy-on-write map its RAM), so keep it read-only and
+    # do work in the clones.
+
+    async def fork(self, name: str, ports: Optional[list[PortSpec]] = None) -> "Machine":
+        """Fork this (forkable) machine into a new, already-running clone.
+
+        The clone boots from this machine's live CoW memory snapshot — no cold
+        start — inheriting its warm workload. This machine must have been started
+        with ``forkable=True``. Returns a started ``Machine`` for the clone.
+        """
+        info = await self.client.fork_machine(self.name, name, ports)
+        clone = Machine(replace(self.config, name=name, forkable=False))
+        clone._info = info
+        clone._started = True
+        return clone
+
+    async def fork_many(self, count: int, prefix: Optional[str] = None) -> list["Machine"]:
+        """Fork ``count`` warm clones concurrently.
+
+        Clone names default to ``<this-name>-<i>``. Returns the started clones.
+        """
+        base = prefix or self.name
+        clones = await asyncio.gather(*[self.fork(f"{base}-{i}") for i in range(count)])
+        return list(clones)
+
+    async def branch(self, name: Optional[str] = None) -> "Machine":
+        """Branch a fresh warm copy of this checkpoint (alias for ``fork``).
+
+        A convenience for tree-search / RL rollout: ``branch()`` a working copy,
+        explore, discard it, and ``branch()`` again to roll back to the warm
+        checkpoint. A name is generated if not given.
+        """
+        if name is None:
+            name = f"{self.name}-branch-{uuid.uuid4().hex[:8]}"
+        return await self.fork(name)
 
     async def stop(self) -> None:
         """Stop the machine."""
