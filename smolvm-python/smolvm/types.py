@@ -8,17 +8,31 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-# Re-export generated API types
-from smolvm.generated import (
-    ImageInfo as GeneratedImageInfo,
-    SandboxInfo as GeneratedMachineInfo,  # generated code still uses old name
-    MountInfo as GeneratedMountInfo,
-    MountSpec as GeneratedMountSpec,
-    PortSpec as GeneratedPortSpec,
-    ResourceSpec as GeneratedResourceSpec,
-    ExecResponse,
-    HealthResponse,
-)
+# Re-export the OpenAPI-generated types for compatibility validation only. The
+# `smolvm.generated` module is a codegen artifact (gitignored, built by
+# scripts/generate-sdks.sh) and is NOT used at runtime — the hand-written types
+# below are the source of truth. Tolerate its absence so a fresh checkout, where
+# codegen has not run, still imports; the validation re-exports are then None.
+try:
+    from smolvm.generated import (
+        ImageInfo as GeneratedImageInfo,
+        SandboxInfo as GeneratedMachineInfo,  # generated code still uses old name
+        MountInfo as GeneratedMountInfo,
+        MountSpec as GeneratedMountSpec,
+        PortSpec as GeneratedPortSpec,
+        ResourceSpec as GeneratedResourceSpec,
+        ExecResponse,
+        HealthResponse,
+    )
+except ImportError:  # codegen not run — validation-only re-exports unavailable
+    GeneratedImageInfo = None
+    GeneratedMachineInfo = None
+    GeneratedMountInfo = None
+    GeneratedMountSpec = None
+    GeneratedPortSpec = None
+    GeneratedResourceSpec = None
+    ExecResponse = None
+    HealthResponse = None
 
 # ============================================================================
 # SDK-specific Enums (for ergonomic access to state values)
