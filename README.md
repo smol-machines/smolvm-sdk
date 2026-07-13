@@ -81,6 +81,36 @@ All SDKs follow the same API patterns:
 | Quick execution | `quickExec(cmd)` | `await quick_exec(cmd)` |
 | Context manager | `using sandbox = ...` | `async with Sandbox(...) as sandbox:` |
 
+## Regenerating the model layer
+
+Each SDK re-exports an OpenAPI-generated model layer purely for
+compatibility validation — the hand-written types are the source of truth, and
+the SDKs run fine without the generated code (its absence is tolerated at
+import). The generated code is `.gitignore`d (`smolvm-python/smolvm/generated`,
+`smolvm-node/src/generated`); regenerate it from the spec with:
+
+```bash
+./scripts/generate-sdks.sh
+```
+
+It reads `openapi.json` at the repo root and emits both the Python
+(dataclasses, via `datamodel-code-generator`) and Node (typescript-fetch, via
+`openapi-generator-cli`) models. Each language is skipped with a warning if its
+toolchain is absent:
+
+```bash
+pip install "datamodel-code-generator>=0.25"   # Python
+(cd smolvm-node && npm install)                # Node (openapi-generator-cli needs Java)
+```
+
+When the server API changes, refresh the spec first (it is the single source of
+truth for both SDKs), then regenerate:
+
+```bash
+curl -s http://127.0.0.1:8080/api-docs/openapi.json > openapi.json
+./scripts/generate-sdks.sh
+```
+
 ## Contributing
 
 See the main [smolvm repository](https://github.com/smolvm/smolvm) for contribution guidelines.

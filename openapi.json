@@ -1,0 +1,2426 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "smolvm API",
+    "description": "OCI-native microVM runtime API for managing sandboxes, containers, images, and microvms.",
+    "license": {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    "version": "0.1.6"
+  },
+  "paths": {
+    "/api/v1/microvms": {
+      "get": {
+        "tags": [
+          "MicroVMs"
+        ],
+        "summary": "List all microvms.",
+        "operationId": "list_microvms",
+        "responses": {
+          "200": {
+            "description": "List of microvms",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMicrovmsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MicroVMs"
+        ],
+        "summary": "Create a new microvm.",
+        "operationId": "create_microvm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMicrovmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "MicroVM created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MicrovmInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MicroVM already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microvms/{name}": {
+      "get": {
+        "tags": [
+          "MicroVMs"
+        ],
+        "summary": "Get microvm status.",
+        "operationId": "get_microvm",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "MicroVM name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MicroVM details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MicrovmInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MicroVM not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MicroVMs"
+        ],
+        "summary": "Delete a microvm.",
+        "operationId": "delete_microvm",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "MicroVM name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MicroVM deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MicroVM not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to delete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microvms/{name}/exec": {
+      "post": {
+        "tags": [
+          "MicroVMs"
+        ],
+        "summary": "Execute a command in a microvm.",
+        "operationId": "exec_microvm",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "MicroVM name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MicrovmExecRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Command executed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MicroVM not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "MicroVM not running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microvms/{name}/start": {
+      "post": {
+        "tags": [
+          "MicroVMs"
+        ],
+        "summary": "Start a microvm.",
+        "operationId": "start_microvm",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "MicroVM name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MicroVM started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MicrovmInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MicroVM not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to start",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microvms/{name}/stop": {
+      "post": {
+        "tags": [
+          "MicroVMs"
+        ],
+        "summary": "Stop a microvm.",
+        "operationId": "stop_microvm",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "MicroVM name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MicroVM stopped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MicrovmInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MicroVM not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to stop",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes": {
+      "get": {
+        "tags": [
+          "Sandboxes"
+        ],
+        "summary": "List all sandboxes.",
+        "operationId": "list_sandboxes",
+        "responses": {
+          "200": {
+            "description": "List of sandboxes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSandboxesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sandboxes"
+        ],
+        "summary": "Create a new sandbox.",
+        "operationId": "create_sandbox",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSandboxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Sandbox created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sandbox already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}": {
+      "get": {
+        "tags": [
+          "Sandboxes"
+        ],
+        "summary": "Get sandbox status.",
+        "operationId": "get_sandbox",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sandbox details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sandboxes"
+        ],
+        "summary": "Delete a sandbox.",
+        "operationId": "delete_sandbox",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "description": "Force delete even if VM is still running",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sandbox deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "VM still running, use force=true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/containers": {
+      "get": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "List containers in a sandbox.",
+        "operationId": "list_containers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of containers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListContainersResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Create a container in a sandbox.",
+        "operationId": "create_container",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContainerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Container created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to create container",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/containers/{cid}": {
+      "delete": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Delete a container.",
+        "operationId": "delete_container",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "in": "path",
+            "description": "Container ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteContainerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Container deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox or container not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to delete container",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/containers/{cid}/exec": {
+      "post": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Execute a command in a container.",
+        "operationId": "exec_in_container",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "in": "path",
+            "description": "Container ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContainerExecRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Command executed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox or container not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/containers/{cid}/start": {
+      "post": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Start a container.",
+        "operationId": "start_container",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "in": "path",
+            "description": "Container ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox or container not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to start container",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/containers/{cid}/stop": {
+      "post": {
+        "tags": [
+          "Containers"
+        ],
+        "summary": "Stop a container.",
+        "operationId": "stop_container",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "in": "path",
+            "description": "Container ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopContainerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Container stopped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox or container not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to stop container",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/exec": {
+      "post": {
+        "tags": [
+          "Execution"
+        ],
+        "summary": "Execute a command in a sandbox.",
+        "description": "This executes directly in the VM (not in a container).",
+        "operationId": "exec_command",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Command executed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/images": {
+      "get": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "List images in a sandbox.",
+        "operationId": "list_images",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of images",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListImagesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/images/pull": {
+      "post": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "Pull an image into a sandbox.",
+        "operationId": "pull_image",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PullImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Image pulled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PullImageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to pull image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/logs": {
+      "get": {
+        "tags": [
+          "Logs"
+        ],
+        "summary": "Stream sandbox console logs via SSE.",
+        "operationId": "stream_logs",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "follow",
+            "in": "query",
+            "description": "Follow the logs (like tail -f)",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "tail",
+            "in": "query",
+            "description": "Number of lines to show from the end",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log stream (SSE)",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "404": {
+            "description": "Sandbox or log file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/run": {
+      "post": {
+        "tags": [
+          "Execution"
+        ],
+        "summary": "Run a command in an image.",
+        "description": "This creates a temporary overlay from the image and runs the command.",
+        "operationId": "run_command",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Command executed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/start": {
+      "post": {
+        "tags": [
+          "Sandboxes"
+        ],
+        "summary": "Start a sandbox.",
+        "operationId": "start_sandbox",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sandbox started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to start",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{id}/stop": {
+      "post": {
+        "tags": [
+          "Sandboxes"
+        ],
+        "summary": "Stop a sandbox.",
+        "operationId": "stop_sandbox",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Sandbox name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sandbox stopped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sandbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to stop",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check endpoint.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiErrorResponse": {
+        "type": "object",
+        "description": "API error response.",
+        "required": [
+          "error",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code.",
+            "example": "NOT_FOUND"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message.",
+            "example": "sandbox 'test' not found"
+          }
+        }
+      },
+      "ContainerExecRequest": {
+        "type": "object",
+        "description": "Request to exec in a container.",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command and arguments.",
+            "example": [
+              "ls",
+              "-la"
+            ]
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVar"
+            },
+            "description": "Environment variables."
+          },
+          "timeoutSecs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Timeout in seconds.",
+            "minimum": 0
+          },
+          "workdir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Working directory."
+          }
+        }
+      },
+      "ContainerInfo": {
+        "type": "object",
+        "description": "Container information.",
+        "required": [
+          "id",
+          "image",
+          "state",
+          "createdAt",
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command."
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Creation timestamp.",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "Container ID.",
+            "example": "abc123"
+          },
+          "image": {
+            "type": "string",
+            "description": "Image.",
+            "example": "alpine:latest"
+          },
+          "state": {
+            "type": "string",
+            "description": "State (created, running, stopped).",
+            "example": "running"
+          }
+        }
+      },
+      "ContainerMountSpec": {
+        "type": "object",
+        "description": "Container mount specification.\n\nNote: The `source` field is the virtiofs tag, which corresponds to\nhost mounts configured on the sandbox. Tags are assigned in order:\n`smolvm0`, `smolvm1`, etc. based on the sandbox's mount configuration.\nUse `GET /api/v1/sandboxes/:id` to see the tag-to-path mapping.",
+        "required": [
+          "source",
+          "target"
+        ],
+        "properties": {
+          "readonly": {
+            "type": "boolean",
+            "description": "Read-only mount."
+          },
+          "source": {
+            "type": "string",
+            "description": "Virtiofs tag (e.g., \"smolvm0\", \"smolvm1\").\nThese correspond to sandbox mounts in order.",
+            "example": "smolvm0"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target path in container.",
+            "example": "/app"
+          }
+        }
+      },
+      "CreateContainerRequest": {
+        "type": "object",
+        "description": "Request to create a container.",
+        "required": [
+          "image"
+        ],
+        "properties": {
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command and arguments.",
+            "example": [
+              "sleep",
+              "infinity"
+            ]
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVar"
+            },
+            "description": "Environment variables."
+          },
+          "image": {
+            "type": "string",
+            "description": "Image to use.",
+            "example": "alpine:latest"
+          },
+          "mounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContainerMountSpec"
+            },
+            "description": "Volume mounts."
+          },
+          "workdir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Working directory."
+          }
+        }
+      },
+      "CreateMicrovmRequest": {
+        "type": "object",
+        "description": "Request to create a new microvm.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "cpus": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of vCPUs.",
+            "example": 2,
+            "minimum": 0
+          },
+          "memoryMb": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Memory in MiB.",
+            "example": 1024,
+            "minimum": 0
+          },
+          "mounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MountSpec"
+            },
+            "description": "Host mounts to attach."
+          },
+          "name": {
+            "type": "string",
+            "description": "Unique name for the microvm.",
+            "example": "my-vm"
+          },
+          "network": {
+            "type": "boolean",
+            "description": "Enable outbound network access (TSI).\nNote: Only TCP/UDP supported, not ICMP (ping)."
+          },
+          "overlayGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Overlay disk size in GiB (default: 2).",
+            "minimum": 0
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortSpec"
+            },
+            "description": "Port mappings (host:guest)."
+          },
+          "storageGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Storage disk size in GiB (default: 20).",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateSandboxRequest": {
+        "type": "object",
+        "description": "Request to create a new sandbox.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "mounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MountSpec"
+            },
+            "description": "Host mounts to attach."
+          },
+          "name": {
+            "type": "string",
+            "description": "Unique name for the sandbox.",
+            "example": "my-sandbox"
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortSpec"
+            },
+            "description": "Port mappings (host:guest)."
+          },
+          "resources": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ResourceSpec",
+                "description": "VM resource configuration."
+              }
+            ]
+          },
+          "restart": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RestartSpec",
+                "description": "Restart policy configuration."
+              }
+            ]
+          }
+        }
+      },
+      "DeleteContainerRequest": {
+        "type": "object",
+        "description": "Request to delete a container.",
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "Force delete even if running."
+          }
+        }
+      },
+      "DeleteQuery": {
+        "type": "object",
+        "description": "Query parameters for delete sandbox endpoint.",
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "If true, force delete even if stop fails and VM is still running.\nThis may orphan the VM process. Default: false."
+          }
+        }
+      },
+      "DeleteResponse": {
+        "type": "object",
+        "description": "Generic delete response.",
+        "required": [
+          "deleted"
+        ],
+        "properties": {
+          "deleted": {
+            "type": "string",
+            "description": "Name of deleted resource.",
+            "example": "my-sandbox"
+          }
+        }
+      },
+      "EnvVar": {
+        "type": "object",
+        "description": "Environment variable.",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Variable name.",
+            "example": "MY_VAR"
+          },
+          "value": {
+            "type": "string",
+            "description": "Variable value.",
+            "example": "my_value"
+          }
+        }
+      },
+      "ExecRequest": {
+        "type": "object",
+        "description": "Request to execute a command in a sandbox.",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command and arguments.",
+            "example": [
+              "echo",
+              "hello"
+            ]
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVar"
+            },
+            "description": "Environment variables."
+          },
+          "timeoutSecs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Timeout in seconds.",
+            "example": 30,
+            "minimum": 0
+          },
+          "workdir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Working directory.",
+            "example": "/workspace"
+          }
+        }
+      },
+      "ExecResponse": {
+        "type": "object",
+        "description": "Command execution result.",
+        "required": [
+          "exitCode",
+          "stdout",
+          "stderr"
+        ],
+        "properties": {
+          "exitCode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Exit code.",
+            "example": 0
+          },
+          "stderr": {
+            "type": "string",
+            "description": "Standard error.",
+            "example": ""
+          },
+          "stdout": {
+            "type": "string",
+            "description": "Standard output.",
+            "example": "hello\n"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "description": "Health check response.",
+        "required": [
+          "status",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Health status (e.g., \"ok\").",
+            "example": "ok"
+          },
+          "version": {
+            "type": "string",
+            "description": "Server version.",
+            "example": "0.1.6"
+          }
+        }
+      },
+      "ImageInfo": {
+        "type": "object",
+        "description": "Image information.",
+        "required": [
+          "reference",
+          "digest",
+          "size",
+          "architecture",
+          "os",
+          "layerCount"
+        ],
+        "properties": {
+          "architecture": {
+            "type": "string",
+            "description": "Architecture.",
+            "example": "arm64"
+          },
+          "digest": {
+            "type": "string",
+            "description": "Image digest.",
+            "example": "sha256:abc123..."
+          },
+          "layerCount": {
+            "type": "integer",
+            "description": "Number of layers.",
+            "example": 3,
+            "minimum": 0
+          },
+          "os": {
+            "type": "string",
+            "description": "OS.",
+            "example": "linux"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Image reference.",
+            "example": "alpine:latest"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Size in bytes.",
+            "example": 7500000,
+            "minimum": 0
+          }
+        }
+      },
+      "ListContainersResponse": {
+        "type": "object",
+        "description": "List containers response.",
+        "required": [
+          "containers"
+        ],
+        "properties": {
+          "containers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContainerInfo"
+            },
+            "description": "List of containers."
+          }
+        }
+      },
+      "ListImagesResponse": {
+        "type": "object",
+        "description": "List images response.",
+        "required": [
+          "images"
+        ],
+        "properties": {
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageInfo"
+            },
+            "description": "List of images."
+          }
+        }
+      },
+      "ListMicrovmsResponse": {
+        "type": "object",
+        "description": "List microvms response.",
+        "required": [
+          "microvms"
+        ],
+        "properties": {
+          "microvms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MicrovmInfo"
+            },
+            "description": "List of microvms."
+          }
+        }
+      },
+      "ListSandboxesResponse": {
+        "type": "object",
+        "description": "List sandboxes response.",
+        "required": [
+          "sandboxes"
+        ],
+        "properties": {
+          "sandboxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SandboxInfo"
+            },
+            "description": "List of sandboxes."
+          }
+        }
+      },
+      "LogsQuery": {
+        "type": "object",
+        "description": "Query parameters for logs endpoint.",
+        "properties": {
+          "follow": {
+            "type": "boolean",
+            "description": "If true, follow the logs (like tail -f). Default: false."
+          },
+          "tail": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Number of lines to show from the end (like tail -n). Default: all.",
+            "example": 100,
+            "minimum": 0
+          }
+        }
+      },
+      "MicrovmExecRequest": {
+        "type": "object",
+        "description": "Request to execute a command in a microvm.",
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command and arguments.",
+            "example": [
+              "echo",
+              "hello"
+            ]
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVar"
+            },
+            "description": "Environment variables."
+          },
+          "timeoutSecs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Timeout in seconds.",
+            "minimum": 0
+          },
+          "workdir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Working directory."
+          }
+        }
+      },
+      "MicrovmInfo": {
+        "type": "object",
+        "description": "MicroVM status information.",
+        "required": [
+          "name",
+          "state",
+          "cpus",
+          "memoryMb",
+          "mounts",
+          "ports",
+          "network",
+          "createdAt"
+        ],
+        "properties": {
+          "cpus": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of vCPUs.",
+            "example": 2,
+            "minimum": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation timestamp."
+          },
+          "memoryMb": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Memory in MiB.",
+            "example": 1024,
+            "minimum": 0
+          },
+          "mounts": {
+            "type": "integer",
+            "description": "Number of configured mounts.",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string",
+            "description": "MicroVM name.",
+            "example": "my-vm"
+          },
+          "network": {
+            "type": "boolean",
+            "description": "Whether outbound network access is enabled."
+          },
+          "pid": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Process ID (if running).",
+            "example": 12345
+          },
+          "ports": {
+            "type": "integer",
+            "description": "Number of configured ports.",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "description": "Current state (\"created\", \"running\", \"stopped\").",
+            "example": "running"
+          }
+        }
+      },
+      "MountInfo": {
+        "type": "object",
+        "description": "Mount information (for responses, includes virtiofs tag).",
+        "required": [
+          "tag",
+          "source",
+          "target",
+          "readonly"
+        ],
+        "properties": {
+          "readonly": {
+            "type": "boolean",
+            "description": "Read-only mount."
+          },
+          "source": {
+            "type": "string",
+            "description": "Host path.",
+            "example": "/Users/me/code"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Virtiofs tag (e.g., \"smolvm0\"). Use this in container mounts.",
+            "example": "smolvm0"
+          },
+          "target": {
+            "type": "string",
+            "description": "Path inside the sandbox.",
+            "example": "/workspace"
+          }
+        }
+      },
+      "MountSpec": {
+        "type": "object",
+        "description": "Mount specification (for requests).",
+        "required": [
+          "source",
+          "target"
+        ],
+        "properties": {
+          "readonly": {
+            "type": "boolean",
+            "description": "Read-only mount."
+          },
+          "source": {
+            "type": "string",
+            "description": "Host path to mount.",
+            "example": "/Users/me/code"
+          },
+          "target": {
+            "type": "string",
+            "description": "Path inside the sandbox.",
+            "example": "/workspace"
+          }
+        }
+      },
+      "PortSpec": {
+        "type": "object",
+        "description": "Port mapping specification.",
+        "required": [
+          "host",
+          "guest"
+        ],
+        "properties": {
+          "guest": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Port inside the sandbox.",
+            "example": 80,
+            "minimum": 0
+          },
+          "host": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Port on the host.",
+            "example": 8080,
+            "minimum": 0
+          }
+        }
+      },
+      "PullImageRequest": {
+        "type": "object",
+        "description": "Request to pull an image.",
+        "required": [
+          "image"
+        ],
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Image reference.",
+            "example": "python:3.12-alpine"
+          },
+          "ociPlatform": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OCI platform for multi-arch images (e.g., \"linux/arm64\").",
+            "example": "linux/arm64"
+          }
+        }
+      },
+      "PullImageResponse": {
+        "type": "object",
+        "description": "Pull image response.",
+        "required": [
+          "image"
+        ],
+        "properties": {
+          "image": {
+            "$ref": "#/components/schemas/ImageInfo",
+            "description": "Information about the pulled image."
+          }
+        }
+      },
+      "ResourceSpec": {
+        "type": "object",
+        "description": "VM resource specification.",
+        "properties": {
+          "cpus": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Number of vCPUs.",
+            "example": 2,
+            "minimum": 0
+          },
+          "memoryMb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Memory in MiB.",
+            "example": 1024,
+            "minimum": 0
+          },
+          "network": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Enable outbound network access (TSI).\nNote: Only TCP/UDP supported, not ICMP (ping)."
+          },
+          "overlayGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Overlay disk size in GiB (default: 2).",
+            "example": 2,
+            "minimum": 0
+          },
+          "storageGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Storage disk size in GiB (default: 20).",
+            "example": 20,
+            "minimum": 0
+          }
+        }
+      },
+      "RestartSpec": {
+        "type": "object",
+        "description": "Restart policy specification for sandbox creation.",
+        "properties": {
+          "maxRetries": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Maximum restart attempts (0 = unlimited).",
+            "minimum": 0
+          },
+          "policy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Restart policy: \"never\", \"always\", \"on-failure\", \"unless-stopped\"."
+          }
+        }
+      },
+      "RunRequest": {
+        "type": "object",
+        "description": "Request to run a command in an image.",
+        "required": [
+          "image",
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Command and arguments.",
+            "example": [
+              "python",
+              "-c",
+              "print('hello')"
+            ]
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvVar"
+            },
+            "description": "Environment variables."
+          },
+          "image": {
+            "type": "string",
+            "description": "Image to run in.",
+            "example": "python:3.12-alpine"
+          },
+          "timeoutSecs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Timeout in seconds.",
+            "minimum": 0
+          },
+          "workdir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Working directory."
+          }
+        }
+      },
+      "SandboxInfo": {
+        "type": "object",
+        "description": "Sandbox status information.",
+        "required": [
+          "name",
+          "state",
+          "mounts",
+          "ports",
+          "resources",
+          "network"
+        ],
+        "properties": {
+          "mounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MountInfo"
+            },
+            "description": "Configured mounts (with virtiofs tags for use in container mounts)."
+          },
+          "name": {
+            "type": "string",
+            "description": "Sandbox name.",
+            "example": "my-sandbox"
+          },
+          "network": {
+            "type": "boolean",
+            "description": "Whether outbound network access is enabled."
+          },
+          "pid": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Process ID (if running).",
+            "example": 12345
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortSpec"
+            },
+            "description": "Configured ports."
+          },
+          "resources": {
+            "$ref": "#/components/schemas/ResourceSpec",
+            "description": "VM resources."
+          },
+          "restartCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Number of times this sandbox has been automatically restarted.",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "description": "Current state.",
+            "example": "running"
+          }
+        }
+      },
+      "StartResponse": {
+        "type": "object",
+        "description": "Generic start response.",
+        "required": [
+          "started"
+        ],
+        "properties": {
+          "started": {
+            "type": "string",
+            "description": "Identifier of started resource.",
+            "example": "abc123"
+          }
+        }
+      },
+      "StopContainerRequest": {
+        "type": "object",
+        "description": "Request to stop a container.",
+        "properties": {
+          "timeoutSecs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Timeout before force kill (seconds).",
+            "example": 10,
+            "minimum": 0
+          }
+        }
+      },
+      "StopResponse": {
+        "type": "object",
+        "description": "Generic stop response.",
+        "required": [
+          "stopped"
+        ],
+        "properties": {
+          "stopped": {
+            "type": "string",
+            "description": "Identifier of stopped resource.",
+            "example": "abc123"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Health check endpoints"
+    },
+    {
+      "name": "Sandboxes",
+      "description": "Sandbox lifecycle management"
+    },
+    {
+      "name": "Execution",
+      "description": "Command execution in sandboxes"
+    },
+    {
+      "name": "Logs",
+      "description": "Log streaming"
+    },
+    {
+      "name": "Containers",
+      "description": "Container management within sandboxes"
+    },
+    {
+      "name": "Images",
+      "description": "OCI image management"
+    },
+    {
+      "name": "MicroVMs",
+      "description": "Persistent microVM management"
+    }
+  ]
+}
