@@ -134,7 +134,7 @@ class SmolvmClient:
             if resources.cpus is not None:
                 body["cpus"] = resources.cpus
             if resources.memory_mb is not None:
-                body["mem"] = resources.memory_mb
+                body["memoryMb"] = resources.memory_mb
 
         if mounts:
             body["mounts"] = [
