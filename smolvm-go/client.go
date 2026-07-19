@@ -187,6 +187,16 @@ func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
 	return &out, nil
 }
 
+// Capacity returns live node capacity: current CPU/memory allocations and real
+// utilization (CPU, memory, disk) across all running machines on the host.
+func (c *Client) Capacity(ctx context.Context) (*CapacityResponse, error) {
+	var out CapacityResponse
+	if err := c.request(ctx, http.MethodGet, "/capacity", nil, &out, defaultRequestTimeout); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // =========================================================================
 // Machines
 // =========================================================================

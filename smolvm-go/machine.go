@@ -76,17 +76,21 @@ func (m *Machine) Start(ctx context.Context) error {
 	}
 
 	req := CreateMachineRequest{
-		Name:         m.config.Name,
-		Image:        m.config.Image,
-		From:         m.config.From,
-		Mounts:       m.config.Mounts,
-		Ports:        m.config.Ports,
-		CPUs:         m.config.CPUs,
-		MemoryMB:     m.config.MemoryMB,
-		Network:      m.config.Network,
-		StorageGB:    m.config.StorageGB,
-		OverlayGB:    m.config.OverlayGB,
-		AllowedCidrs: m.config.AllowedCidrs,
+		Name:                  m.config.Name,
+		Image:                 m.config.Image,
+		From:                  m.config.From,
+		RegistryRef:           m.config.RegistryRef,
+		RegistryIdentityToken: m.config.RegistryIdentityToken,
+		Mounts:                m.config.Mounts,
+		Ports:                 m.config.Ports,
+		CPUs:                  m.config.CPUs,
+		MemoryMB:              m.config.MemoryMB,
+		Network:               m.config.Network,
+		GPU:                   m.config.GPU,
+		StorageGB:             m.config.StorageGB,
+		OverlayGB:             m.config.OverlayGB,
+		AllowedCidrs:          m.config.AllowedCidrs,
+		Restart:               m.config.Restart,
 	}
 
 	info, err := m.Client.CreateMachine(ctx, req)
@@ -196,6 +200,7 @@ func (m *Machine) Exec(ctx context.Context, command []string, opts ...ExecOption
 		Env:         envVarSlice(o.Env),
 		Workdir:     o.Workdir,
 		TimeoutSecs: timeoutSecsPtr(o.Timeout),
+		Stdin:       o.Stdin,
 	})
 	if err != nil {
 		return nil, err

@@ -45,7 +45,7 @@ type MachineInfo struct {
 	Mounts    []MountInfo  `json:"mounts"`
 	Ports     []PortSpec   `json:"ports"`
 	Network   bool         `json:"network"`
-	CreatedAt string       `json:"createdAt"`
+	CreatedAt int64        `json:"createdAt"` // Unix epoch seconds
 	PID       *int         `json:"pid,omitempty"`
 	StorageGB *int64       `json:"storageGb,omitempty"`
 	OverlayGB *int64       `json:"overlayGb,omitempty"`
@@ -75,31 +75,73 @@ type MachineCountsResponse struct {
 	Running int `json:"running"`
 }
 
+// CapacityResponse is the body returned by GET /capacity: live node
+// allocations and real utilization across all running machines on the host.
+//
+// Its JSON keys are snake_case (allocated_cpus, used_disk_gb, …), not the
+// camelCase used by most responses: the server's CapacityResponse derives
+// Serialize with no rename attribute, so serde emits the Rust field names
+// verbatim. HealthResponse (uptime_seconds) is the other response that does
+// this; everything else carries serde(rename_all = "camelCase").
+type CapacityResponse struct {
+	// AllocatedCPUs is the sum of per-machine vCPU requests for running machines.
+	AllocatedCPUs int `json:"allocated_cpus"`
+	// AllocatedMemoryMB is memory (MiB) allocated to running machines.
+	AllocatedMemoryMB int64 `json:"allocated_memory_mb"`
+	// UsedCPUs is the real fractional CPU load across VM processes.
+	UsedCPUs float64 `json:"used_cpus"`
+	// UsedMemoryMB is real resident memory (MiB) across VM processes.
+	UsedMemoryMB int64 `json:"used_memory_mb"`
+	// UsedDiskGB is real disk (GiB) consumed by VM storage + overlay files.
+	UsedDiskGB int64 `json:"used_disk_gb"`
+}
+
+// RestartSpec is the restart policy for a machine, applied at creation time.
+type RestartSpec struct {
+	// Policy is one of "never", "always", "on-failure", "unless-stopped".
+	Policy string `json:"policy,omitempty"`
+	// MaxRetries caps restart attempts (0 = unlimited); nil leaves it unset.
+	MaxRetries *int `json:"maxRetries,omitempty"`
+}
+
 // CreateMachineRequest is the body for POST /api/v1/machines.
 //
 // Resource fields (CPUs, MemoryMB, Network, StorageGB, OverlayGB, AllowedCidrs)
 // are sent flat at the top level — the server does not accept a nested
 // `resources` object on this endpoint.
+//
+// Image, From, and RegistryRef are mutually exclusive image sources.
 type CreateMachineRequest struct {
-	Name         string      `json:"name,omitempty"`
-	Image        string      `json:"image,omitempty"`
-	From         string      `json:"from,omitempty"`
-	Mounts       []MountSpec `json:"mounts,omitempty"`
-	Ports        []PortSpec  `json:"ports,omitempty"`
-	CPUs         int         `json:"cpus,omitempty"`
-	MemoryMB     int         `json:"memoryMb,omitempty"`
-	Network      bool        `json:"network,omitempty"`
-	StorageGB    *int64      `json:"storageGb,omitempty"`
-	OverlayGB    *int64      `json:"overlayGb,omitempty"`
-	AllowedCidrs []string    `json:"allowedCidrs,omitempty"`
+	Name                  string       `json:"name,omitempty"`
+	Image                 string       `json:"image,omitempty"`
+	From                  string       `json:"from,omitempty"`
+	RegistryRef           string       `json:"registryRef,omitempty"`
+	RegistryIdentityToken string       `json:"registryIdentityToken,omitempty"`
+	Mounts                []MountSpec  `json:"mounts,omitempty"`
+	Ports                 []PortSpec   `json:"ports,omitempty"`
+	CPUs                  int          `json:"cpus,omitempty"`
+	MemoryMB              int          `json:"memoryMb,omitempty"`
+	Network               bool         `json:"network,omitempty"`
+	GPU                   bool         `json:"gpu,omitempty"`
+	StorageGB             *int64       `json:"storageGb,omitempty"`
+	OverlayGB             *int64       `json:"overlayGb,omitempty"`
+	AllowedCidrs          []string     `json:"allowedCidrs,omitempty"`
+	Restart               *RestartSpec `json:"restart,omitempty"`
 }
 
 // ExecRequest is the body for POST /api/v1/machines/{name}/exec and exec/stream.
+//
+// Stdin is honoured by the synchronous /exec endpoint; the streaming
+// /exec/stream endpoint ignores Stdin and Background.
 type ExecRequest struct {
 	Command     []string `json:"command"`
 	Env         []EnvVar `json:"env,omitempty"`
 	Workdir     string   `json:"workdir,omitempty"`
 	TimeoutSecs *int64   `json:"timeoutSecs,omitempty"`
+	Stdin       string   `json:"stdin,omitempty"`
+	// Background runs the command detached: the server spawns it and returns
+	// its PID in stdout immediately instead of waiting for it to exit.
+	Background bool `json:"background,omitempty"`
 }
 
 // RunRequest is the body for POST /api/v1/machines/{name}/run.
@@ -125,6 +167,10 @@ type ExecResponse struct {
 type PullImageRequest struct {
 	Image       string `json:"image"`
 	OCIPlatform string `json:"ociPlatform,omitempty"`
+	// Proxy sets HTTP_PROXY/HTTPS_PROXY for the in-VM registry client.
+	Proxy string `json:"proxy,omitempty"`
+	// NoProxy is a comma-separated NO_PROXY list of hosts/CIDRs to bypass Proxy.
+	NoProxy string `json:"noProxy,omitempty"`
 }
 
 // PullImageResponse wraps the pulled image info.
@@ -220,6 +266,20 @@ type Config struct {
 	// AllowedCidrs restricts egress to the given CIDR ranges.
 	AllowedCidrs []string
 
+	// GPU enables GPU acceleration (Vulkan via virtio-gpu).
+	GPU bool
+
+	// Restart sets the machine's restart policy.
+	Restart *RestartSpec
+
+	// RegistryRef pulls a .smolmachine artifact from a registry before
+	// creating the VM. Mutually exclusive with Image and From.
+	RegistryRef string
+
+	// RegistryIdentityToken is a bearer credential (an OCI Distribution
+	// identity_token) presented when pulling a private RegistryRef.
+	RegistryIdentityToken string
+
 	// HTTPClient is an optional override for the underlying *http.Client.
 	HTTPClient HTTPClient
 }
@@ -235,4 +295,6 @@ type ExecOptions struct {
 	Env     map[string]string
 	Workdir string
 	Timeout int // seconds; 0 means "no client-side limit beyond default"
+	// Stdin is piped to the command's standard input (synchronous exec only).
+	Stdin string
 }

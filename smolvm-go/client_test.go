@@ -34,6 +34,31 @@ func TestClientHealth(t *testing.T) {
 	}
 }
 
+func TestClientCapacity(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/capacity" {
+			t.Errorf("path: %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(CapacityResponse{
+			AllocatedCPUs: 4, AllocatedMemoryMB: 8192,
+			UsedCPUs: 1.5, UsedMemoryMB: 2048, UsedDiskGB: 12,
+		})
+	}))
+	defer srv.Close()
+
+	c := NewClient(srv.URL)
+	got, err := c.Capacity(context.Background())
+	if err != nil {
+		t.Fatalf("Capacity: %v", err)
+	}
+	if got.AllocatedCPUs != 4 || got.AllocatedMemoryMB != 8192 {
+		t.Errorf("allocated = %+v", got)
+	}
+	if got.UsedCPUs != 1.5 || got.UsedMemoryMB != 2048 || got.UsedDiskGB != 12 {
+		t.Errorf("used = %+v", got)
+	}
+}
+
 func TestClientCreateMachineFlatPayload(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
