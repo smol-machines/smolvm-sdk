@@ -7,6 +7,7 @@ from dataclasses import replace
 from typing import Any, AsyncIterator, Optional
 
 from .client import SmolvmClient
+from .errors import InternalError
 from .execution import ExecResult
 from .types import (
     ExecOptions,
@@ -239,14 +240,31 @@ class Machine:
         Returns:
             ExecResult with exit_code, stdout, stderr
         """
-        response = await self.client.run(
-            self.name,
-            image,
-            command,
-            env=env,
-            workdir=workdir,
-            timeout_secs=timeout,
-        )
+        try:
+            response = await self.client.run(
+                self.name,
+                image,
+                command,
+                env=env,
+                workdir=workdir,
+                timeout_secs=timeout,
+            )
+        except InternalError as e:
+            # The run endpoint does not pull on miss; an unpulled image surfaces
+            # as "image not found". Pull it into the machine and retry once —
+            # a truly nonexistent image fails the pull with the registry's
+            # error, which is the right message to propagate.
+            if "image not found" not in str(e):
+                raise
+            await self.client.pull_image(self.name, image)
+            response = await self.client.run(
+                self.name,
+                image,
+                command,
+                env=env,
+                workdir=workdir,
+                timeout_secs=timeout,
+            )
         return ExecResult.from_dict(response)
 
     # =========================================================================
@@ -363,6 +381,7 @@ async def quick_run(
     env: Optional[dict[str, str]] = None,
     workdir: Optional[str] = None,
     timeout: Optional[int] = None,
+    network: bool = True,
 ) -> ExecResult:
     """
     Quick run helper - creates a temporary machine, runs in an image, and cleans up.
@@ -382,10 +401,13 @@ async def quick_run(
     """
     import time
 
+    # network defaults ON: quick_run exists to run arbitrary images, and the
+    # ephemeral machine must be able to pull them from a registry.
     config = MachineConfig(
         name=name or f"quick-run-{int(time.time() * 1000)}",
         server_url=server_url,
         mounts=mounts or [],
+        network=network,
     )
 
     async with with_machine(config) as machine:
