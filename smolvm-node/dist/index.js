@@ -321,70 +321,6 @@ var SmolvmClient = class {
     }
   }
   // ==========================================================================
-  // Containers
-  // ==========================================================================
-  /**
-   * Create a container in a machine.
-   */
-  async createContainer(machine, req) {
-    return this.request(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers`,
-      req
-    );
-  }
-  /**
-   * List containers in a machine.
-   */
-  async listContainers(machine) {
-    const response = await this.request(
-      "GET",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers`
-    );
-    return response.containers;
-  }
-  /**
-   * Start a container.
-   */
-  async startContainer(machine, containerId) {
-    return this.request(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/start`
-    );
-  }
-  /**
-   * Stop a container.
-   */
-  async stopContainer(machine, containerId, req) {
-    return this.request(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/stop`,
-      req ?? {}
-    );
-  }
-  /**
-   * Delete a container.
-   */
-  async deleteContainer(machine, containerId, req) {
-    return this.request(
-      "DELETE",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}`,
-      req ?? {}
-    );
-  }
-  /**
-   * Execute a command in a container.
-   */
-  async execContainer(machine, containerId, req, timeout) {
-    const requestTimeout = req.timeoutSecs ? (req.timeoutSecs + 10) * 1e3 : timeout;
-    return this.request(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/exec`,
-      req,
-      requestTimeout
-    );
-  }
-  // ==========================================================================
   // Images
   // ==========================================================================
   /**
@@ -474,104 +410,6 @@ ${this.stderr}`;
   }
 };
 
-// src/container.ts
-var Container = class {
-  id;
-  parent;
-  _info;
-  constructor(parent, info) {
-    this.id = info.id;
-    this.parent = parent;
-    this._info = info;
-  }
-  /**
-   * Start the container.
-   */
-  async start() {
-    await this.parent.client.startContainer(this.parent.name, this.id);
-  }
-  /**
-   * Stop the container.
-   * @param timeout - Timeout in seconds to wait for graceful stop
-   */
-  async stop(timeout) {
-    await this.parent.client.stopContainer(
-      this.parent.name,
-      this.id,
-      timeout !== void 0 ? { timeoutSecs: timeout } : void 0
-    );
-  }
-  /**
-   * Delete the container.
-   * @param force - Force delete even if running
-   */
-  async delete(force) {
-    await this.parent.client.deleteContainer(
-      this.parent.name,
-      this.id,
-      force !== void 0 ? { force } : void 0
-    );
-  }
-  /**
-   * Execute a command in the container.
-   */
-  async exec(command, options) {
-    const env = options?.env ? Object.entries(options.env).map(([name, value]) => ({ name, value })) : void 0;
-    const response = await this.parent.client.execContainer(
-      this.parent.name,
-      this.id,
-      {
-        command,
-        env,
-        workdir: options?.workdir,
-        timeoutSecs: options?.timeout
-      }
-    );
-    return new ExecResult(response);
-  }
-  /**
-   * Refresh container info from the server.
-   */
-  async refresh() {
-    const containers = await this.parent.client.listContainers(this.parent.name);
-    const container = containers.find((c) => c.id === this.id);
-    if (container) {
-      this._info = container;
-    }
-    return this._info;
-  }
-  /**
-   * Get the current container state.
-   */
-  get state() {
-    return this._info.state;
-  }
-  /**
-   * Get the container image.
-   */
-  get image() {
-    return this._info.image;
-  }
-  /**
-   * Get the container command.
-   */
-  get command() {
-    return this._info.command;
-  }
-  /**
-   * Get the container creation timestamp.
-   */
-  get createdAt() {
-    return this._info.createdAt;
-  }
-  /**
-   * Get the raw container info.
-   */
-  get info() {
-    return this._info;
-  }
-};
-
 // src/machine.ts
 var DEFAULT_SERVER_URL = "http://127.0.0.1:8080";
 var Machine = class _Machine {
@@ -604,11 +442,15 @@ var Machine = class _Machine {
     if (this._started) {
       return;
     }
+    const { network, gpu, cuda, ...resources } = this.config.resources ?? {};
     this._info = await this.client.createMachine({
       name: this.config.name,
       mounts: this.config.mounts,
       ports: this.config.ports,
-      resources: this.config.resources
+      ...resources,
+      network: network ?? void 0,
+      gpu: gpu ?? void 0,
+      cuda: cuda ?? void 0
     });
     this._info = await this.client.startMachine(this.name);
     this._started = true;
@@ -706,48 +548,6 @@ var Machine = class _Machine {
       follow: options?.follow,
       tail: options?.tail
     });
-  }
-  // =========================================================================
-  // Containers
-  // =========================================================================
-  /**
-   * Create a container in the machine.
-   */
-  async createContainer(options) {
-    const env = options.env ? Object.entries(options.env).map(([name, value]) => ({ name, value })) : void 0;
-    const mounts = options.mounts?.map(
-      (m) => ({
-        source: m.tag,
-        target: m.target,
-        readonly: m.readonly
-      })
-    );
-    const info = await this.client.createContainer(this.name, {
-      image: options.image,
-      command: options.command,
-      env,
-      workdir: options.workdir,
-      mounts
-    });
-    return new Container(this, info);
-  }
-  /**
-   * List all containers in the machine.
-   */
-  async listContainers() {
-    const containers = await this.client.listContainers(this.name);
-    return containers.map((info) => new Container(this, info));
-  }
-  /**
-   * Get a container by ID.
-   */
-  async getContainer(id) {
-    const containers = await this.client.listContainers(this.name);
-    const containerInfo = containers.find((c) => c.id === id);
-    if (!containerInfo) {
-      throw new Error(`Container not found: ${id}`);
-    }
-    return new Container(this, containerInfo);
   }
   // =========================================================================
   // Images

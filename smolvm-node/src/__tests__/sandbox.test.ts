@@ -124,6 +124,8 @@ describe("Machine E2E Tests", () => {
       runMachine = await Machine.create({
         name: uniqueMachineName("run-tests"),
         serverUrl: TEST_SERVER_URL,
+        // Image pulls need network access inside the VM.
+        resources: { network: true },
       });
       await ensureTestImage(runMachine);
     });

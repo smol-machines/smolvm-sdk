@@ -19,32 +19,16 @@ import type {
   ExecRequest,
   ExecResponse,
   RunRequest,
-  CreateContainerRequest,
-  ContainerInfo,
-  ContainerExecRequest,
-  StopContainerRequest,
-  DeleteContainerRequest,
   DeleteResponse,
   ImageInfo,
   PullImageRequest,
   PullImageResponse,
   ApiErrorResponse,
   ListMachinesResponse,
-  ListContainersResponse,
   ListImagesResponse,
   MachineExecRequest,
   LogsQuery,
 } from "./generated/models/index.js";
-
-/** Response from starting a container. */
-interface StartResponse {
-  started: string;
-}
-
-/** Response from stopping a container. */
-interface StopResponse {
-  stopped: string;
-}
 
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
@@ -322,100 +306,6 @@ export class SmolvmClient {
     } finally {
       reader.releaseLock();
     }
-  }
-
-  // ==========================================================================
-  // Containers
-  // ==========================================================================
-
-  /**
-   * Create a container in a machine.
-   */
-  async createContainer(
-    machine: string,
-    req: CreateContainerRequest
-  ): Promise<ContainerInfo> {
-    return this.request<ContainerInfo>(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers`,
-      req
-    );
-  }
-
-  /**
-   * List containers in a machine.
-   */
-  async listContainers(machine: string): Promise<ContainerInfo[]> {
-    const response = await this.request<ListContainersResponse>(
-      "GET",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers`
-    );
-    return response.containers;
-  }
-
-  /**
-   * Start a container.
-   */
-  async startContainer(
-    machine: string,
-    containerId: string
-  ): Promise<StartResponse> {
-    return this.request<StartResponse>(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/start`
-    );
-  }
-
-  /**
-   * Stop a container.
-   */
-  async stopContainer(
-    machine: string,
-    containerId: string,
-    req?: StopContainerRequest
-  ): Promise<StopResponse> {
-    // API requires a JSON body even if empty
-    return this.request<StopResponse>(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/stop`,
-      req ?? {}
-    );
-  }
-
-  /**
-   * Delete a container.
-   */
-  async deleteContainer(
-    machine: string,
-    containerId: string,
-    req?: DeleteContainerRequest
-  ): Promise<DeleteResponse> {
-    // API requires force in body, not query params
-    return this.request<DeleteResponse>(
-      "DELETE",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}`,
-      req ?? {}
-    );
-  }
-
-  /**
-   * Execute a command in a container.
-   */
-  async execContainer(
-    machine: string,
-    containerId: string,
-    req: ContainerExecRequest,
-    timeout?: number
-  ): Promise<ExecResponse> {
-    const requestTimeout = req.timeoutSecs
-      ? (req.timeoutSecs + 10) * 1000
-      : timeout;
-    return this.request<ExecResponse>(
-      "POST",
-      `/api/v1/machines/${encodeURIComponent(machine)}/containers/${encodeURIComponent(containerId)}/exec`,
-      req,
-      requestTimeout
-    );
   }
 
   // ==========================================================================

@@ -12,11 +12,6 @@ export type {
   ExecRequest,
   RunRequest,
   EnvVar,
-  CreateContainerRequest,
-  ContainerMountSpec,
-  ContainerExecRequest,
-  StopContainerRequest,
-  DeleteContainerRequest,
   PullImageRequest,
   LogsQuery,
   MachineExecRequest,
@@ -32,8 +27,6 @@ export type {
   MountInfo,
   ListMachinesResponse,
   ExecResponse,
-  ContainerInfo,
-  ListContainersResponse,
   ImageInfo,
   ListImagesResponse,
   PullImageResponse,
@@ -71,11 +64,6 @@ export interface MachineConfig {
 export type MachineState = "created" | "running" | "stopped";
 
 /**
- * Container state.
- */
-export type ContainerState = "created" | "running" | "stopped";
-
-/**
  * Options for command execution.
  */
 export interface ExecOptions {
@@ -91,20 +79,10 @@ export interface ExecOptions {
  * Options for log streaming.
  */
 export interface LogsOptions {
-  /** Only return logs after this timestamp */
-  since?: string;
   /** Follow log output */
   follow?: boolean;
-}
-
-/**
- * Container creation options.
- */
-export interface ContainerOptions {
-  /** Working directory inside the container */
-  workdir?: string;
-  /** Container volume mounts (using virtiofs tags from machine mounts) */
-  mounts?: Array<{ source: string; target: string; readOnly?: boolean }>;
+  /** Only return the last N lines */
+  tail?: number;
 }
 
 /**
