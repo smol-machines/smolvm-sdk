@@ -45,7 +45,7 @@ type MachineInfo struct {
 	Mounts    []MountInfo  `json:"mounts"`
 	Ports     []PortSpec   `json:"ports"`
 	Network   bool         `json:"network"`
-	CreatedAt string       `json:"createdAt"`
+	CreatedAt int64        `json:"createdAt"`
 	PID       *int         `json:"pid,omitempty"`
 	StorageGB *int64       `json:"storageGb,omitempty"`
 	OverlayGB *int64       `json:"overlayGb,omitempty"`
