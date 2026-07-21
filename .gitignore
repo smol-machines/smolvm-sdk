@@ -15,9 +15,3 @@ smolvm-python/build/
 
 # Python - generated from OpenAPI (regenerate with scripts/generate-sdks.sh)
 smolvm-python/smolvm/generated/
-
-# openapi-generator
-smolvm-node/openapitools.json
-
-# openapi spec copy created by scripts/generate-sdks.sh for the node generator
-smolvm-node/openapi/

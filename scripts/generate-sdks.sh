@@ -14,7 +14,7 @@
 #
 # Prerequisites (installed on demand, skipped with a warning if absent):
 #     Python: pip install "datamodel-code-generator>=0.25"
-#     Node:   (cd smolvm-node && npm install)   # openapi-generator-cli, needs Java
+#     Node:   (cd smolvm-node && npm install)   # openapi-typescript
 #
 set -euo pipefail
 
@@ -37,15 +37,13 @@ else
     echo "   pip install 'datamodel-code-generator>=0.25'" >&2
 fi
 
-# ---- Node: OpenAPI -> typescript-fetch (src/generated) ----------------------
+# ---- Node: OpenAPI -> openapi-typescript (src/generated) --------------------
 if command -v npm >/dev/null 2>&1; then
     echo "==> Node: generating smolvm-node/src/generated"
-    # package.json's `generate` reads ../openapi/openapi.json; feed it the root spec.
-    mkdir -p "$ROOT/smolvm-node/openapi"
-    cp "$SPEC" "$ROOT/smolvm-node/openapi/openapi.json"
+    # package.json's `generate` reads the root openapi.json directly.
     if ! ( cd "$ROOT/smolvm-node" && npm run generate ); then
         echo "!! Node generation failed — install the toolchain first:" >&2
-        echo "   (cd smolvm-node && npm install)   # openapi-generator-cli needs Java" >&2
+        echo "   (cd smolvm-node && npm install)   # openapi-typescript" >&2
     fi
 else
     echo "!! skipping Node: npm not found" >&2
