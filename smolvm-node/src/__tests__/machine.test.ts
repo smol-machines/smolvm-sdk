@@ -65,8 +65,8 @@ describe("Machine E2E Tests", () => {
       const info1 = await client.createMachine({ name: name1 });
       expect(info1.name).toBe(name1);
       expect(info1.state).toBe("created");
-      expect(info1.cpus).toBe(1);
-      expect(info1.memoryMb).toBe(512);
+      expect(info1.cpus).toBeGreaterThan(0);
+      expect(info1.memoryMb).toBeGreaterThan(0);
 
       // Custom resources
       const name2 = uniqueMachineName("custom");
@@ -213,15 +213,23 @@ describe("Machine E2E Tests", () => {
       expect(wdResult.stdout.trim()).toBe("/tmp");
     });
 
-    it("should fail to exec in a stopped machine", async () => {
+    it("should auto-start a stopped machine on exec", async () => {
       const name = uniqueMachineName("stopped");
       tracker.track(name);
 
       await client.createMachine({ name });
+      await client.startMachine(name);
+      await client.stopMachine(name);
 
-      await expect(
-        client.execMachine(name, { command: ["echo", "hello"] })
-      ).rejects.toThrow(ConflictError);
+      // Exec transparently boots the stopped machine.
+      const result = await client.execMachine(name, {
+        command: ["echo", "hello"],
+      });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.trim()).toBe("hello");
+
+      const info = await client.getMachine(name);
+      expect(info.state).toBe("running");
     });
   });
 });

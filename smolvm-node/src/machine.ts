@@ -1,5 +1,4 @@
 import { SmolvmClient } from "./client.js";
-import { Container, type ContainerParent } from "./container.js";
 import { ExecResult } from "./execution.js";
 import type {
   MachineConfig,
@@ -8,10 +7,8 @@ import type {
   MountInfo,
   ExecOptions,
   LogsOptions,
-  ContainerOptions,
   ImageInfo,
   EnvVar,
-  ContainerMountSpec,
 } from "./types.js";
 
 const DEFAULT_SERVER_URL = "http://127.0.0.1:8080";
@@ -19,7 +16,7 @@ const DEFAULT_SERVER_URL = "http://127.0.0.1:8080";
 /**
  * High-level machine abstraction for managing microVM machines.
  */
-export class Machine implements ContainerParent {
+export class Machine {
   readonly name: string;
   readonly client: SmolvmClient;
 
@@ -55,12 +52,17 @@ export class Machine implements ContainerParent {
       return;
     }
 
-    // Create the machine
+    // Create the machine. Resource settings are top-level fields in
+    // CreateMachineRequest, so spread the ResourceSpec into the request.
+    const { network, gpu, cuda, ...resources } = this.config.resources ?? {};
     this._info = await this.client.createMachine({
       name: this.config.name,
       mounts: this.config.mounts,
       ports: this.config.ports,
-      resources: this.config.resources,
+      ...resources,
+      network: network ?? undefined,
+      gpu: gpu ?? undefined,
+      cuda: cuda ?? undefined,
     });
 
     // Start the machine
@@ -189,59 +191,6 @@ export class Machine implements ContainerParent {
   }
 
   // =========================================================================
-  // Containers
-  // =========================================================================
-
-  /**
-   * Create a container in the machine.
-   */
-  async createContainer(options: ContainerOptions): Promise<Container> {
-    const env: EnvVar[] | undefined = options.env
-      ? Object.entries(options.env).map(([name, value]) => ({ name, value }))
-      : undefined;
-
-    const mounts: ContainerMountSpec[] | undefined = options.mounts?.map(
-      (m) => ({
-        source: m.tag,
-        target: m.target,
-        readonly: m.readonly,
-      })
-    );
-
-    const info = await this.client.createContainer(this.name, {
-      image: options.image,
-      command: options.command,
-      env,
-      workdir: options.workdir,
-      mounts,
-    });
-
-    return new Container(this, info);
-  }
-
-  /**
-   * List all containers in the machine.
-   */
-  async listContainers(): Promise<Container[]> {
-    const containers = await this.client.listContainers(this.name);
-    return containers.map((info) => new Container(this, info));
-  }
-
-  /**
-   * Get a container by ID.
-   */
-  async getContainer(id: string): Promise<Container> {
-    const containers = await this.client.listContainers(this.name);
-    const containerInfo = containers.find((c) => c.id === id);
-
-    if (!containerInfo) {
-      throw new Error(`Container not found: ${id}`);
-    }
-
-    return new Container(this, containerInfo);
-  }
-
-  // =========================================================================
   // Images
   // =========================================================================
 
@@ -294,7 +243,7 @@ export async function withMachine<T>(
  */
 export async function quickExec(
   command: string[],
-  options?: MachineConfig & ExecOptions
+  options?: Partial<MachineConfig> & ExecOptions
 ): Promise<ExecResult> {
   const config: MachineConfig = {
     name: options?.name || `quick-exec-${Date.now()}`,
@@ -319,7 +268,7 @@ export async function quickExec(
 export async function quickRun(
   image: string,
   command: string[],
-  options?: MachineConfig & ExecOptions
+  options?: Partial<MachineConfig> & ExecOptions
 ): Promise<ExecResult> {
   const config: MachineConfig = {
     name: options?.name || `quick-run-${Date.now()}`,

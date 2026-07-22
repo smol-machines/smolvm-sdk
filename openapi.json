@@ -2,28 +2,28 @@
   "openapi": "3.1.0",
   "info": {
     "title": "smolvm API",
-    "description": "OCI-native microVM runtime API for managing sandboxes, containers, images, and microvms.",
+    "description": "smolvm API for managing machines and images.",
     "license": {
       "name": "Apache-2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0"
     },
-    "version": "0.1.6"
+    "version": "0.5.2"
   },
   "paths": {
-    "/api/v1/microvms": {
+    "/api/v1/machines": {
       "get": {
         "tags": [
-          "MicroVMs"
+          "Machines"
         ],
-        "summary": "List all microvms.",
-        "operationId": "list_microvms",
+        "summary": "List all machines.",
+        "operationId": "list_machines",
         "responses": {
           "200": {
-            "description": "List of microvms",
+            "description": "List of machines",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListMicrovmsResponse"
+                  "$ref": "#/components/schemas/ListMachinesResponse"
                 }
               }
             }
@@ -42,15 +42,15 @@
       },
       "post": {
         "tags": [
-          "MicroVMs"
+          "Machines"
         ],
-        "summary": "Create a new microvm.",
-        "operationId": "create_microvm",
+        "summary": "Create a new machine.",
+        "operationId": "create_machine",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateMicrovmRequest"
+                "$ref": "#/components/schemas/CreateMachineRequest"
               }
             }
           },
@@ -58,11 +58,11 @@
         },
         "responses": {
           "200": {
-            "description": "MicroVM created",
+            "description": "Machine created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MicrovmInfo"
+                  "$ref": "#/components/schemas/MachineInfo"
                 }
               }
             }
@@ -78,7 +78,7 @@
             }
           },
           "409": {
-            "description": "MicroVM already exists",
+            "description": "Machine already exists",
             "content": {
               "application/json": {
                 "schema": {
@@ -90,854 +90,19 @@
         }
       }
     },
-    "/api/v1/microvms/{name}": {
-      "get": {
-        "tags": [
-          "MicroVMs"
-        ],
-        "summary": "Get microvm status.",
-        "operationId": "get_microvm",
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "description": "MicroVM name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "MicroVM details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MicrovmInfo"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MicroVM not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "MicroVMs"
-        ],
-        "summary": "Delete a microvm.",
-        "operationId": "delete_microvm",
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "description": "MicroVM name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "MicroVM deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeleteResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MicroVM not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to delete",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/microvms/{name}/exec": {
-      "post": {
-        "tags": [
-          "MicroVMs"
-        ],
-        "summary": "Execute a command in a microvm.",
-        "operationId": "exec_microvm",
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "description": "MicroVM name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MicrovmExecRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Command executed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExecResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MicroVM not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "MicroVM not running",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Execution failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/microvms/{name}/start": {
-      "post": {
-        "tags": [
-          "MicroVMs"
-        ],
-        "summary": "Start a microvm.",
-        "operationId": "start_microvm",
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "description": "MicroVM name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "MicroVM started",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MicrovmInfo"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MicroVM not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to start",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/microvms/{name}/stop": {
-      "post": {
-        "tags": [
-          "MicroVMs"
-        ],
-        "summary": "Stop a microvm.",
-        "operationId": "stop_microvm",
-        "parameters": [
-          {
-            "name": "name",
-            "in": "path",
-            "description": "MicroVM name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "MicroVM stopped",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MicrovmInfo"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MicroVM not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to stop",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes": {
-      "get": {
-        "tags": [
-          "Sandboxes"
-        ],
-        "summary": "List all sandboxes.",
-        "operationId": "list_sandboxes",
-        "responses": {
-          "200": {
-            "description": "List of sandboxes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListSandboxesResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Sandboxes"
-        ],
-        "summary": "Create a new sandbox.",
-        "operationId": "create_sandbox",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSandboxRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Sandbox created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SandboxInfo"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Sandbox already exists",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes/{id}": {
-      "get": {
-        "tags": [
-          "Sandboxes"
-        ],
-        "summary": "Get sandbox status.",
-        "operationId": "get_sandbox",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Sandbox details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SandboxInfo"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Sandboxes"
-        ],
-        "summary": "Delete a sandbox.",
-        "operationId": "delete_sandbox",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "force",
-            "in": "query",
-            "description": "Force delete even if VM is still running",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Sandbox deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeleteResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "VM still running, use force=true",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes/{id}/containers": {
-      "get": {
-        "tags": [
-          "Containers"
-        ],
-        "summary": "List containers in a sandbox.",
-        "operationId": "list_containers",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of containers",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListContainersResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Containers"
-        ],
-        "summary": "Create a container in a sandbox.",
-        "operationId": "create_container",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateContainerRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Container created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ContainerInfo"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to create container",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes/{id}/containers/{cid}": {
-      "delete": {
-        "tags": [
-          "Containers"
-        ],
-        "summary": "Delete a container.",
-        "operationId": "delete_container",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "cid",
-            "in": "path",
-            "description": "Container ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeleteContainerRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Container deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeleteResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox or container not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to delete container",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes/{id}/containers/{cid}/exec": {
-      "post": {
-        "tags": [
-          "Containers"
-        ],
-        "summary": "Execute a command in a container.",
-        "operationId": "exec_in_container",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "cid",
-            "in": "path",
-            "description": "Container ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ContainerExecRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Command executed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExecResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox or container not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Execution failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes/{id}/containers/{cid}/start": {
-      "post": {
-        "tags": [
-          "Containers"
-        ],
-        "summary": "Start a container.",
-        "operationId": "start_container",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "cid",
-            "in": "path",
-            "description": "Container ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Container started",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StartResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox or container not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to start container",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes/{id}/containers/{cid}/stop": {
-      "post": {
-        "tags": [
-          "Containers"
-        ],
-        "summary": "Stop a container.",
-        "operationId": "stop_container",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Sandbox name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "cid",
-            "in": "path",
-            "description": "Container ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StopContainerRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Container stopped",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StopResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sandbox or container not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to stop container",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sandboxes/{id}/exec": {
+    "/api/v1/machines/{id}/exec": {
       "post": {
         "tags": [
           "Execution"
         ],
-        "summary": "Execute a command in a sandbox.",
+        "summary": "Execute a command in a machine.",
         "description": "This executes directly in the VM (not in a container).",
         "operationId": "exec_command",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Sandbox name",
+            "description": "Machine name",
             "required": true,
             "schema": {
               "type": "string"
@@ -976,7 +141,7 @@
             }
           },
           "404": {
-            "description": "Sandbox not found",
+            "description": "Machine not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -998,18 +163,182 @@
         }
       }
     },
-    "/api/v1/sandboxes/{id}/images": {
+    "/api/v1/machines/{id}/exec/stream": {
+      "post": {
+        "tags": [
+          "Execution"
+        ],
+        "summary": "Execute a command with streaming output (Server-Sent Events).",
+        "description": "Returns real-time stdout/stderr as SSE events. Useful for long-running\ncommands where buffering the entire output is impractical.",
+        "operationId": "exec_stream",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Streaming output (SSE)",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{id}/files/{path}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Download a file from a machine.",
+        "description": "Returns the file contents as a raw byte stream.",
+        "operationId": "download_file",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "description": "File path inside the VM",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File contents",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "404": {
+            "description": "Machine or file not found"
+          },
+          "500": {
+            "description": "Read failed"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Upload a file to a machine.",
+        "description": "Writes the request body as a file at the specified path inside the VM.\nCreates parent directories automatically.",
+        "operationId": "upload_file",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "description": "File path inside the VM (e.g., workspace/script.py)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "File uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found"
+          },
+          "500": {
+            "description": "Write failed"
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{id}/images": {
       "get": {
         "tags": [
           "Images"
         ],
-        "summary": "List images in a sandbox.",
+        "summary": "List images in a machine.",
         "operationId": "list_images",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Sandbox name",
+            "description": "Machine name",
             "required": true,
             "schema": {
               "type": "string"
@@ -1028,7 +357,7 @@
             }
           },
           "404": {
-            "description": "Sandbox not found",
+            "description": "Machine not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1040,18 +369,18 @@
         }
       }
     },
-    "/api/v1/sandboxes/{id}/images/pull": {
+    "/api/v1/machines/{id}/images/pull": {
       "post": {
         "tags": [
           "Images"
         ],
-        "summary": "Pull an image into a sandbox.",
+        "summary": "Pull an image into a machine.",
         "operationId": "pull_image",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Sandbox name",
+            "description": "Machine name",
             "required": true,
             "schema": {
               "type": "string"
@@ -1090,7 +419,7 @@
             }
           },
           "404": {
-            "description": "Sandbox not found",
+            "description": "Machine not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1112,18 +441,18 @@
         }
       }
     },
-    "/api/v1/sandboxes/{id}/logs": {
+    "/api/v1/machines/{id}/logs": {
       "get": {
         "tags": [
           "Logs"
         ],
-        "summary": "Stream sandbox console logs via SSE.",
+        "summary": "Stream machine console logs via SSE.",
         "operationId": "stream_logs",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Sandbox name",
+            "description": "Machine name",
             "required": true,
             "schema": {
               "type": "string"
@@ -1157,7 +486,7 @@
             }
           },
           "404": {
-            "description": "Sandbox or log file not found",
+            "description": "Machine or log file not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1169,7 +498,7 @@
         }
       }
     },
-    "/api/v1/sandboxes/{id}/run": {
+    "/api/v1/machines/{id}/run": {
       "post": {
         "tags": [
           "Execution"
@@ -1181,7 +510,7 @@
           {
             "name": "id",
             "in": "path",
-            "description": "Sandbox name",
+            "description": "Machine name",
             "required": true,
             "schema": {
               "type": "string"
@@ -1220,7 +549,7 @@
             }
           },
           "404": {
-            "description": "Sandbox not found",
+            "description": "Machine not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1242,18 +571,18 @@
         }
       }
     },
-    "/api/v1/sandboxes/{id}/start": {
-      "post": {
+    "/api/v1/machines/{name}": {
+      "get": {
         "tags": [
-          "Sandboxes"
+          "Machines"
         ],
-        "summary": "Start a sandbox.",
-        "operationId": "start_sandbox",
+        "summary": "Get machine status.",
+        "operationId": "get_machine",
         "parameters": [
           {
-            "name": "id",
+            "name": "name",
             "in": "path",
-            "description": "Sandbox name",
+            "description": "Machine name",
             "required": true,
             "schema": {
               "type": "string"
@@ -1262,17 +591,447 @@
         ],
         "responses": {
           "200": {
-            "description": "Sandbox started",
+            "description": "Machine details",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SandboxInfo"
+                  "$ref": "#/components/schemas/MachineInfo"
                 }
               }
             }
           },
           "404": {
-            "description": "Sandbox not found",
+            "description": "Machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Machines"
+        ],
+        "summary": "Delete a machine.",
+        "operationId": "delete_machine",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Machine deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to delete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{name}/exec": {
+      "post": {
+        "tags": [
+          "Machines"
+        ],
+        "summary": "Execute a command in a machine.",
+        "operationId": "exec_machine",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineExecRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Command executed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Machine not running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{name}/export": {
+      "post": {
+        "tags": [
+          "Machines"
+        ],
+        "summary": "Export a stopped machine to a `.smolmachine` and push it directly to a\nregistry.",
+        "description": "The machine must be stopped: exporting a running VM would snapshot an\ninconsistent overlay. The `.smolmachine` is produced by subprocessing this\nsame binary's `pack create --from-vm <name>` (the tested path that boots a\nhelper VM to export the container overlay), then streamed to the registry\nwith the control-plane-minted, pre-scoped OCI bearer.",
+        "operationId": "export_machine",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Machine exported and pushed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Machine is not stopped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Export or push failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{name}/fork": {
+      "post": {
+        "tags": [
+          "Machines"
+        ],
+        "summary": "Fork a running, forkable golden machine into a new clone (copy-on-write\nmemory + disks).",
+        "operationId": "fork_machine",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Golden (source) machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Clone forked and running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (e.g. nested fork)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Golden machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Golden not forkable, or clone name already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Fork failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{name}/resize": {
+      "post": {
+        "tags": [
+          "Machines"
+        ],
+        "summary": "Resize a machine's disk resources.",
+        "operationId": "resize_machine",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResizeMachineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Machine resized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Machine is running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Resize failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{name}/start": {
+      "post": {
+        "tags": [
+          "Machines"
+        ],
+        "summary": "Start a machine.",
+        "operationId": "start_machine",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Machine name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "forkable",
+            "in": "query",
+            "description": "Start as a fork base (memfd RAM + control socket)",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Machine started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A published host port is already in use (PORT_IN_USE)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1294,18 +1053,18 @@
         }
       }
     },
-    "/api/v1/sandboxes/{id}/stop": {
+    "/api/v1/machines/{name}/stop": {
       "post": {
         "tags": [
-          "Sandboxes"
+          "Machines"
         ],
-        "summary": "Stop a sandbox.",
-        "operationId": "stop_sandbox",
+        "summary": "Stop a machine.",
+        "operationId": "stop_machine",
         "parameters": [
           {
-            "name": "id",
+            "name": "name",
             "in": "path",
-            "description": "Sandbox name",
+            "description": "Machine name",
             "required": true,
             "schema": {
               "type": "string"
@@ -1314,17 +1073,17 @@
         ],
         "responses": {
           "200": {
-            "description": "Sandbox stopped",
+            "description": "Machine stopped",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SandboxInfo"
+                  "$ref": "#/components/schemas/MachineInfo"
                 }
               }
             }
           },
           "404": {
-            "description": "Sandbox not found",
+            "description": "Machine not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1342,6 +1101,31 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/capacity": {
+      "get": {
+        "tags": [
+          "Node"
+        ],
+        "summary": "Report live node capacity \u2014 current allocations + real utilization across\nall running machines on this host.",
+        "description": "Read-only and runtime-agnostic: it exposes only what the runtime knows\n(allocated vs. used), leaving totals/reserved policy to the caller. A fleet\nnode-agent polls this over HTTP and forwards it to the control plane in its\nheartbeat, which keeps the runtime itself free of any cloud coupling.",
+        "operationId": "capacity",
+        "responses": {
+          "200": {
+            "description": "Live node capacity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapacityResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Main runtime stalled \u2014 node is unschedulable"
           }
         }
       }
@@ -1386,183 +1170,152 @@
           "error": {
             "type": "string",
             "description": "Error message.",
-            "example": "sandbox 'test' not found"
+            "example": "machine 'test' not found"
           }
         }
       },
-      "ContainerExecRequest": {
+      "CapacityResponse": {
         "type": "object",
-        "description": "Request to exec in a container.",
+        "description": "Live node capacity: current allocations and real utilization across all\nrunning machines on this host. Read-only introspection \u2014 a fleet control\nplane (or any operator) polls this to gauge node load. The reporter owns\ntotals/reserved; this endpoint reports only what the runtime itself knows.",
         "required": [
-          "command"
+          "allocated_cpus",
+          "allocated_memory_mb",
+          "used_cpus",
+          "used_memory_mb",
+          "used_disk_gb"
         ],
         "properties": {
-          "command": {
+          "allocated_cpus": {
+            "type": "integer",
+            "format": "int32",
+            "description": "CPUs allocated to running machines (sum of per-machine cpu requests).",
+            "minimum": 0
+          },
+          "allocated_memory_mb": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Memory (MB) allocated to running machines.",
+            "minimum": 0
+          },
+          "boot_id": {
+            "type": "string",
+            "description": "Opaque id minted once per serve process. It changes iff the serve restarts\n\u2014 the signal the control uses to detect that this node's warm pool (and any\nin-memory VM state) was wiped, so it can prune the now-stale pool records."
+          },
+          "used_cpus": {
+            "type": "number",
+            "format": "double",
+            "description": "Real fractional CPU load across VM processes (e.g. 2.5 = 2.5 CPUs)."
+          },
+          "used_disk_gb": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Real disk (GB) consumed by VM storage + overlay files.",
+            "minimum": 0
+          },
+          "used_memory_mb": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Real resident memory (MB) across VM processes.",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateMachineRequest": {
+        "type": "object",
+        "description": "Request to create a new machine.",
+        "properties": {
+          "allowedCidrs": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed egress CIDR ranges."
+          },
+          "allowedHosts": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed egress hostnames (and their subdomains); DNS answers for these\nnames are learned into the egress allow-list."
+          },
+          "blobPeers": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Command and arguments.",
-            "example": [
-              "ls",
-              "-la"
-            ]
+            "description": "Brokered P2P blob peers: node base URLs (`https://<addr>:<port>`) supplied\nby the control plane. On a cache miss the layer blob is fetched from a\npeer's `GET /p2p/blob/<digest>` (over node\u2192node mTLS) before the registry.\nEmpty (the default) \u21d2 registry-only, byte-for-byte as before."
           },
-          "env": {
+          "cmd": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/EnvVar"
+              "type": "string"
             },
-            "description": "Environment variables."
+            "description": "Workload command run when the machine starts (see `entrypoint`)."
           },
-          "timeoutSecs": {
+          "cpus": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "int64",
-            "description": "Timeout in seconds.",
+            "format": "int32",
+            "description": "Number of vCPUs.",
+            "example": 4,
             "minimum": 0
           },
-          "workdir": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Working directory."
-          }
-        }
-      },
-      "ContainerInfo": {
-        "type": "object",
-        "description": "Container information.",
-        "required": [
-          "id",
-          "image",
-          "state",
-          "createdAt",
-          "command"
-        ],
-        "properties": {
-          "command": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Command."
-          },
-          "createdAt": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Creation timestamp.",
-            "minimum": 0
-          },
-          "id": {
-            "type": "string",
-            "description": "Container ID.",
-            "example": "abc123"
-          },
-          "image": {
-            "type": "string",
-            "description": "Image.",
-            "example": "alpine:latest"
-          },
-          "state": {
-            "type": "string",
-            "description": "State (created, running, stopped).",
-            "example": "running"
-          }
-        }
-      },
-      "ContainerMountSpec": {
-        "type": "object",
-        "description": "Container mount specification.\n\nNote: The `source` field is the virtiofs tag, which corresponds to\nhost mounts configured on the sandbox. Tags are assigned in order:\n`smolvm0`, `smolvm1`, etc. based on the sandbox's mount configuration.\nUse `GET /api/v1/sandboxes/:id` to see the tag-to-path mapping.",
-        "required": [
-          "source",
-          "target"
-        ],
-        "properties": {
-          "readonly": {
+          "cuda": {
             "type": "boolean",
-            "description": "Read-only mount."
+            "description": "Enable CUDA remoting (host NVIDIA GPU via the bundled shims)."
           },
-          "source": {
-            "type": "string",
-            "description": "Virtiofs tag (e.g., \"smolvm0\", \"smolvm1\").\nThese correspond to sandbox mounts in order.",
-            "example": "smolvm0"
+          "dockerSocket": {
+            "type": "boolean",
+            "description": "Expose the guest's Docker daemon socket to the host as a Unix socket in\nthe VM data dir, so a host client can drive it with `DOCKER_HOST=unix://\u2026`.\nOff by default."
           },
-          "target": {
-            "type": "string",
-            "description": "Target path in container.",
-            "example": "/app"
-          }
-        }
-      },
-      "CreateContainerRequest": {
-        "type": "object",
-        "description": "Request to create a container.",
-        "required": [
-          "image"
-        ],
-        "properties": {
-          "command": {
+          "entrypoint": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Command and arguments.",
-            "example": [
-              "sleep",
-              "infinity"
-            ]
+            "description": "Workload entrypoint. With `cmd`, overrides the image's (or the\n`.smolmachine` artifact's) own entrypoint+cmd, matching the CLI's\n`machine create -- <command>` precedence. Empty = use the image's."
           },
           "env": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EnvVar"
             },
-            "description": "Environment variables."
+            "description": "Environment variables for the machine's workload (init commands and the\nentrypoint). For `from`/`registry_ref` machines these layer on top of\nthe artifact manifest's env; a request variable wins on name collision."
           },
-          "image": {
-            "type": "string",
-            "description": "Image to use.",
-            "example": "alpine:latest"
-          },
-          "mounts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ContainerMountSpec"
-            },
-            "description": "Volume mounts."
-          },
-          "workdir": {
+          "from": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Working directory."
-          }
-        }
-      },
-      "CreateMicrovmRequest": {
-        "type": "object",
-        "description": "Request to create a new microvm.",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "cpus": {
-            "type": "integer",
-            "format": "int32",
-            "description": "Number of vCPUs.",
-            "example": 2,
-            "minimum": 0
+            "description": "Path to a .smolmachine sidecar file. Creates the machine from pre-packed\nlayers instead of pulling from a registry. Mutually exclusive with `image`."
+          },
+          "gpu": {
+            "type": "boolean",
+            "description": "Enable GPU acceleration (Vulkan via virtio-gpu)."
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OCI image reference (e.g., \"alpine:latest\"). Mutually exclusive with `from`."
           },
           "memoryMb": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
             "description": "Memory in MiB.",
-            "example": 1024,
+            "example": 8192,
             "minimum": 0
           },
           "mounts": {
@@ -1573,13 +1326,27 @@
             "description": "Host mounts to attach."
           },
           "name": {
-            "type": "string",
-            "description": "Unique name for the microvm.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Machine name. Auto-generated if omitted.",
             "example": "my-vm"
           },
           "network": {
             "type": "boolean",
             "description": "Enable outbound network access (TSI).\nNote: Only TCP/UDP supported, not ICMP (ping)."
+          },
+          "networkBackend": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NetworkBackend",
+                "description": "Network backend: `tsi` (default, outbound-only) or `virtio-net`.\nPublished `ports` require `virtio-net` (TSI has no inbound path)."
+              }
+            ]
           },
           "overlayGb": {
             "type": [
@@ -1587,7 +1354,7 @@
               "null"
             ],
             "format": "int64",
-            "description": "Overlay disk size in GiB (default: 2).",
+            "description": "Overlay disk size in GiB (default: 10).",
             "minimum": 0
           },
           "ports": {
@@ -1597,53 +1364,19 @@
             },
             "description": "Port mappings (host:guest)."
           },
-          "storageGb": {
+          "registryIdentityToken": {
             "type": [
-              "integer",
+              "string",
               "null"
             ],
-            "format": "int64",
-            "description": "Storage disk size in GiB (default: 20).",
-            "minimum": 0
-          }
-        }
-      },
-      "CreateSandboxRequest": {
-        "type": "object",
-        "description": "Request to create a new sandbox.",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "mounts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MountSpec"
-            },
-            "description": "Host mounts to attach."
+            "description": "Bearer credential (an OCI Distribution `identity_token`) to present when\npulling `registry_ref`. The control plane supplies a short-lived,\ntenant-scoped token here so a node can fetch a tenant's private\n`.smolmachine`. Takes precedence over any persisted registry credential."
           },
-          "name": {
-            "type": "string",
-            "description": "Unique name for the sandbox.",
-            "example": "my-sandbox"
-          },
-          "ports": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PortSpec"
-            },
-            "description": "Port mappings (host:guest)."
-          },
-          "resources": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ResourceSpec",
-                "description": "VM resource configuration."
-              }
-            ]
+          "registryRef": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Registry reference to a .smolmachine artifact (e.g., \"myapp:v1\").\nPulls from the registry before creating the VM.\nMutually exclusive with `image` and `from`."
           },
           "restart": {
             "oneOf": [
@@ -1655,22 +1388,32 @@
                 "description": "Restart policy configuration."
               }
             ]
-          }
-        }
-      },
-      "DeleteContainerRequest": {
-        "type": "object",
-        "description": "Request to delete a container.",
-        "properties": {
-          "force": {
-            "type": "boolean",
-            "description": "Force delete even if running."
+          },
+          "secrets": {
+            "type": "object",
+            "description": "Secret refs attached to the machine. Resolved at every\nsubsequent exec against the host's env/files. Rejected unless empty;\naccepted \u2014 `from_env`/`from_file` on the API surface would let\nan untrusted caller exfiltrate the server process's env or\nread arbitrary host files; use the CLI `machine create` path\nfor those source kinds."
+          },
+          "storageGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Storage disk size in GiB (default: 20).",
+            "minimum": 0
+          },
+          "workdir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Working directory for the machine's workload. Overrides the artifact\nmanifest's workdir when set."
           }
         }
       },
       "DeleteQuery": {
         "type": "object",
-        "description": "Query parameters for delete sandbox endpoint.",
+        "description": "Query parameters for delete machine endpoint.",
         "properties": {
           "force": {
             "type": "boolean",
@@ -1688,7 +1431,7 @@
           "deleted": {
             "type": "string",
             "description": "Name of deleted resource.",
-            "example": "my-sandbox"
+            "example": "my-machine"
           }
         }
       },
@@ -1714,11 +1457,15 @@
       },
       "ExecRequest": {
         "type": "object",
-        "description": "Request to execute a command in a sandbox.",
+        "description": "Request to execute a command in a machine.",
         "required": [
           "command"
         ],
         "properties": {
+          "background": {
+            "type": "boolean",
+            "description": "Run the command detached: spawn it in the background and return its PID\nimmediately instead of waiting. The process keeps running (a long-lived\ndaemon \u2014 dev server, agent runner) until it exits or the machine stops."
+          },
           "command": {
             "type": "array",
             "items": {
@@ -1736,6 +1483,17 @@
               "$ref": "#/components/schemas/EnvVar"
             },
             "description": "Environment variables."
+          },
+          "secrets": {
+            "type": "object",
+            "description": "Ad-hoc secret refs. Rejected unless empty: an untrusted HTTP\ncaller cannot read this host's env/files. See `RequestSecretRefs`."
+          },
+          "stdin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Data to pipe to the command's stdin."
           },
           "timeoutSecs": {
             "type": [
@@ -1759,11 +1517,13 @@
       },
       "ExecResponse": {
         "type": "object",
-        "description": "Command execution result.",
+        "description": "Command execution result.\n\n**Encoding note**: `stdout`/`stderr` are a lossy UTF-8 view (non-UTF-8 bytes\nbecome U+FFFD) kept for older clients. `stdoutB64`/`stderrB64` carry the raw,\nbyte-exact output (base64) and should be preferred by callers that need\nbinary-safe results (image bytes, tarballs, etc.) \u2014 the agent preserves\nbytes end-to-end and these fields do too.",
         "required": [
           "exitCode",
           "stdout",
-          "stderr"
+          "stderr",
+          "stdoutB64",
+          "stderrB64"
         ],
         "properties": {
           "exitCode": {
@@ -1774,13 +1534,130 @@
           },
           "stderr": {
             "type": "string",
-            "description": "Standard error.",
+            "description": "Standard error, lossy UTF-8 (non-UTF-8 bytes \u2192 U+FFFD). Prefer `stderrB64`.",
             "example": ""
+          },
+          "stderrB64": {
+            "type": "string",
+            "description": "Raw stderr bytes, base64-encoded \u2014 byte-exact, binary-safe."
           },
           "stdout": {
             "type": "string",
-            "description": "Standard output.",
+            "description": "Standard output, lossy UTF-8 (non-UTF-8 bytes \u2192 U+FFFD). Prefer `stdoutB64`.",
             "example": "hello\n"
+          },
+          "stdoutB64": {
+            "type": "string",
+            "description": "Raw stdout bytes, base64-encoded \u2014 byte-exact, binary-safe."
+          }
+        }
+      },
+      "ExportRequest": {
+        "type": "object",
+        "description": "Request to export a stopped machine to a `.smolmachine` and push it to a\nregistry. The control plane mints a pre-scoped OCI bearer (`push_token`)\nthat authorizes the write against `reference_host`.",
+        "required": [
+          "repo",
+          "tag",
+          "pushToken",
+          "referenceHost"
+        ],
+        "properties": {
+          "pushToken": {
+            "type": "string",
+            "description": "Pre-scoped OCI bearer token minted by the control plane."
+          },
+          "referenceHost": {
+            "type": "string",
+            "description": "Registry host to push to (e.g. `registry.smolmachines.com`).",
+            "example": "registry.smolmachines.com"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository to push into (e.g. `tenant/my-machine`).",
+            "example": "tenant/my-machine"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag to push under (e.g. `latest`).",
+            "example": "latest"
+          }
+        }
+      },
+      "ExportResponse": {
+        "type": "object",
+        "description": "Result of exporting a machine to a registry.",
+        "required": [
+          "digest",
+          "sizeBytes",
+          "platform",
+          "manifest"
+        ],
+        "properties": {
+          "digest": {
+            "type": "string",
+            "description": "Digest of the pushed OCI manifest (reference as `repo@<digest>`).",
+            "example": "sha256:abc123"
+          },
+          "manifest": {
+            "type": "string",
+            "description": "The `PackManifest` JSON carried in the sidecar footer."
+          },
+          "platform": {
+            "type": "string",
+            "description": "Host platform the artifact targets (e.g. `linux/amd64`).",
+            "example": "linux/amd64"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Size of the `.smolmachine` sidecar blob in bytes.",
+            "example": 104857600,
+            "minimum": 0
+          }
+        }
+      },
+      "FileUploadResponse": {
+        "type": "object",
+        "description": "Response from file upload.",
+        "required": [
+          "path",
+          "size"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path where the file was written."
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Size of the file in bytes.",
+            "minimum": 0
+          }
+        }
+      },
+      "ForkRequest": {
+        "type": "object",
+        "description": "Request to fork a running, forkable golden machine into a new clone.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name for the new clone machine.",
+            "example": "clone-1"
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortSpec"
+            },
+            "description": "Pin the clone's inbound port forwards. Without this, the golden's\nforwards are remapped to freshly-allocated host ports so the clone does\nnot collide with the still-running golden or sibling clones."
+          },
+          "shareWeights": {
+            "type": "boolean",
+            "description": "Share the golden's loaded CUDA weights with this clone instead of\ncopying them (one base copy in VRAM across sibling clones). Correct when\nthe base stays frozen (LoRA/QLoRA fine-tuning, inference)."
           }
         }
       },
@@ -1792,15 +1669,35 @@
           "version"
         ],
         "properties": {
+          "machines": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MachineCountsResponse",
+                "description": "Machine counts."
+              }
+            ]
+          },
           "status": {
             "type": "string",
             "description": "Health status (e.g., \"ok\").",
             "example": "ok"
           },
+          "uptime_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Server uptime in seconds.",
+            "minimum": 0
+          },
           "version": {
             "type": "string",
             "description": "Server version.",
-            "example": "0.1.6"
+            "example": "0.5.2"
           }
         }
       },
@@ -1851,22 +1748,6 @@
           }
         }
       },
-      "ListContainersResponse": {
-        "type": "object",
-        "description": "List containers response.",
-        "required": [
-          "containers"
-        ],
-        "properties": {
-          "containers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ContainerInfo"
-            },
-            "description": "List of containers."
-          }
-        }
-      },
       "ListImagesResponse": {
         "type": "object",
         "description": "List images response.",
@@ -1883,35 +1764,19 @@
           }
         }
       },
-      "ListMicrovmsResponse": {
+      "ListMachinesResponse": {
         "type": "object",
-        "description": "List microvms response.",
+        "description": "List machines response.",
         "required": [
-          "microvms"
+          "machines"
         ],
         "properties": {
-          "microvms": {
+          "machines": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MicrovmInfo"
+              "$ref": "#/components/schemas/MachineInfo"
             },
-            "description": "List of microvms."
-          }
-        }
-      },
-      "ListSandboxesResponse": {
-        "type": "object",
-        "description": "List sandboxes response.",
-        "required": [
-          "sandboxes"
-        ],
-        "properties": {
-          "sandboxes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SandboxInfo"
-            },
-            "description": "List of sandboxes."
+            "description": "List of machines."
           }
         }
       },
@@ -1922,6 +1787,13 @@
           "follow": {
             "type": "boolean",
             "description": "If true, follow the logs (like tail -f). Default: false."
+          },
+          "format": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Output format: \"raw\" (default) or \"json\" (only emit valid JSON lines)."
           },
           "tail": {
             "type": [
@@ -1934,9 +1806,29 @@
           }
         }
       },
-      "MicrovmExecRequest": {
+      "MachineCountsResponse": {
         "type": "object",
-        "description": "Request to execute a command in a microvm.",
+        "description": "Machine counts for health response.",
+        "required": [
+          "total",
+          "running"
+        ],
+        "properties": {
+          "running": {
+            "type": "integer",
+            "description": "Currently running machines.",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total machines in the database.",
+            "minimum": 0
+          }
+        }
+      },
+      "MachineExecRequest": {
+        "type": "object",
+        "description": "Request to execute a command in a machine.",
         "required": [
           "command"
         ],
@@ -1959,6 +1851,17 @@
             },
             "description": "Environment variables."
           },
+          "secrets": {
+            "type": "object",
+            "description": "Ad-hoc secret refs. Rejected unless empty (untrusted scope)."
+          },
+          "stdin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Data to pipe to the command's stdin."
+          },
           "timeoutSecs": {
             "type": [
               "integer",
@@ -1977,9 +1880,9 @@
           }
         }
       },
-      "MicrovmInfo": {
+      "MachineInfo": {
         "type": "object",
-        "description": "MicroVM status information.",
+        "description": "Machine status information.",
         "required": [
           "name",
           "state",
@@ -1991,6 +1894,46 @@
           "createdAt"
         ],
         "properties": {
+          "allowedCidrs": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed egress CIDRs. Omitted when unrestricted; an empty list denies all."
+          },
+          "allowedHosts": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed egress hostnames. Omitted when unset. Echoes back what `create` accepted."
+          },
+          "cpuMillis": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Same consumed CPU but in MILLISECONDS \u2014 sub-second precision so consumers\nintegrating this don't quantize a barely-busy process up to a whole second.\nDerived from the same nanosecond sample as `cpu_seconds`. Omitted for\nstopped machines (no live process to sample).",
+            "example": 42830,
+            "minimum": 0
+          },
+          "cpuSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Consumed CPU-seconds (user+system) of the machine's CURRENT VMM process,\nsampled live from the host. Resets to 0 on a VM restart \u2014 it's a stateless\nsnapshot; the control plane accumulates a durable total from it. Omitted\nfor stopped machines (no live process to sample).",
+            "example": 42,
+            "minimum": 0
+          },
           "cpus": {
             "type": "integer",
             "format": "int32",
@@ -1999,8 +1942,30 @@
             "minimum": 0
           },
           "createdAt": {
-            "type": "string",
-            "description": "Creation timestamp."
+            "type": "integer",
+            "format": "int64",
+            "description": "Creation timestamp (seconds since Unix epoch).",
+            "minimum": 0
+          },
+          "diskUsedMb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Actual host disk consumed by this machine's data dir, in MiB (real blocks of\nthe sparse disk images, not provisioned capacity). An instantaneous gauge the\ncontrol integrates over time for active-disk billing. Omitted when the data\ndir can't be read.",
+            "example": 256,
+            "minimum": 0
+          },
+          "egressBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Cumulative guest-outbound (egress) bytes since boot, for billing. Present\nonly for virtio-net machines that have reported a value; omitted for TSI\nor machines that haven't flushed yet. Surfaced the same way `storage_gb`\nis, so the control plane reads both from the machine list.",
+            "example": 1048576,
+            "minimum": 0
           },
           "memoryMb": {
             "type": "integer",
@@ -2010,18 +1975,41 @@
             "minimum": 0
           },
           "mounts": {
-            "type": "integer",
-            "description": "Number of configured mounts.",
-            "minimum": 0
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MountInfo"
+            },
+            "description": "Configured mounts (with virtiofs tags for container use)."
           },
           "name": {
             "type": "string",
-            "description": "MicroVM name.",
+            "description": "Machine name.",
             "example": "my-vm"
           },
           "network": {
             "type": "boolean",
             "description": "Whether outbound network access is enabled."
+          },
+          "networkBackend": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NetworkBackend",
+                "description": "Network backend the machine runs (`tsi` or `virtio-net`). Omitted when\nunset (the default TSI). Echoes back what `create` accepted."
+              }
+            ]
+          },
+          "overlayGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Overlay disk size in GiB.",
+            "example": 2,
+            "minimum": 0
           },
           "pid": {
             "type": [
@@ -2033,14 +2021,36 @@
             "example": 12345
           },
           "ports": {
-            "type": "integer",
-            "description": "Number of configured ports.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortSpec"
+            },
+            "description": "Configured port mappings."
+          },
+          "rssMb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Current resident memory (RSS) of the machine's VMM process, in MiB, sampled\nlive from the host. Unlike CPU this is an instantaneous gauge (not a\ncounter); the control plane integrates it over time for active-memory\nbilling. Omitted for stopped machines (no live process to sample).",
+            "example": 128,
             "minimum": 0
           },
           "state": {
             "type": "string",
             "description": "Current state (\"created\", \"running\", \"stopped\").",
             "example": "running"
+          },
+          "storageGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Storage disk size in GiB.",
+            "example": 20,
+            "minimum": 0
           }
         }
       },
@@ -2070,7 +2080,7 @@
           },
           "target": {
             "type": "string",
-            "description": "Path inside the sandbox.",
+            "description": "Path inside the machine.",
             "example": "/workspace"
           }
         }
@@ -2094,10 +2104,18 @@
           },
           "target": {
             "type": "string",
-            "description": "Path inside the sandbox.",
+            "description": "Path inside the machine.",
             "example": "/workspace"
           }
         }
+      },
+      "NetworkBackend": {
+        "type": "string",
+        "description": "Network backend override for machine launch.",
+        "enum": [
+          "tsi",
+          "virtio-net"
+        ]
       },
       "PortSpec": {
         "type": "object",
@@ -2110,7 +2128,7 @@
           "guest": {
             "type": "integer",
             "format": "int32",
-            "description": "Port inside the sandbox.",
+            "description": "Port inside the machine.",
             "example": 80,
             "minimum": 0
           },
@@ -2135,6 +2153,14 @@
             "description": "Image reference.",
             "example": "python:3.12-alpine"
           },
+          "noProxy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Comma-separated NO_PROXY list of hosts/CIDRs that bypass the proxy.",
+            "example": "127.0.0.1,localhost,.internal"
+          },
           "ociPlatform": {
             "type": [
               "string",
@@ -2142,6 +2168,14 @@
             ],
             "description": "OCI platform for multi-arch images (e.g., \"linux/arm64\").",
             "example": "linux/arm64"
+          },
+          "proxy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Proxy URL applied to the in-VM registry client\n(sets HTTP_PROXY and HTTPS_PROXY).",
+            "example": "http://192.168.127.254:3128"
           }
         }
       },
@@ -2158,10 +2192,56 @@
           }
         }
       },
+      "ResizeMachineRequest": {
+        "type": "object",
+        "description": "Request to resize a machine's disk resources.",
+        "properties": {
+          "overlayGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Overlay disk size in GiB (expand only, optional).",
+            "example": 20,
+            "minimum": 0
+          },
+          "storageGb": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Storage disk size in GiB (expand only, optional).",
+            "example": 50,
+            "minimum": 0
+          }
+        }
+      },
       "ResourceSpec": {
         "type": "object",
         "description": "VM resource specification.",
         "properties": {
+          "allowedCidrs": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed egress CIDR ranges. When set, only these IP ranges are reachable.\nOmit for unrestricted egress. Empty list denies all egress."
+          },
+          "allowedHosts": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Allowed egress hostnames. When set, DNS answers for these names (and their\nsubdomains) are learned into the egress allow-list so the machine can reach\nthem by name. Combine with `allowed_cidrs` to also permit fixed ranges."
+          },
           "cpus": {
             "type": [
               "integer",
@@ -2171,6 +2251,20 @@
             "description": "Number of vCPUs.",
             "example": 2,
             "minimum": 0
+          },
+          "cuda": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Enable CUDA remoting (the guest sees the host NVIDIA GPU through the\nbundled shims). Required on a golden that fork clones will train on."
+          },
+          "gpu": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Enable GPU acceleration (Vulkan via virtio-gpu)."
           },
           "memoryMb": {
             "type": [
@@ -2189,14 +2283,25 @@
             ],
             "description": "Enable outbound network access (TSI).\nNote: Only TCP/UDP supported, not ICMP (ping)."
           },
+          "networkBackend": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NetworkBackend",
+                "description": "Network backend: `tsi` (default, outbound-only) or `virtio-net`\n(required for published `ports`). Omit for the default (TSI)."
+              }
+            ]
+          },
           "overlayGb": {
             "type": [
               "integer",
               "null"
             ],
             "format": "int64",
-            "description": "Overlay disk size in GiB (default: 2).",
-            "example": 2,
+            "description": "Overlay disk size in GiB (default: 10).",
+            "example": 10,
             "minimum": 0
           },
           "storageGb": {
@@ -2213,7 +2318,7 @@
       },
       "RestartSpec": {
         "type": "object",
-        "description": "Restart policy specification for sandbox creation.",
+        "description": "Restart policy specification for machine creation.",
         "properties": {
           "maxRetries": {
             "type": [
@@ -2265,6 +2370,10 @@
             "description": "Image to run in.",
             "example": "python:3.12-alpine"
           },
+          "secrets": {
+            "type": "object",
+            "description": "Ad-hoc secret refs. Rejected unless empty (untrusted scope)."
+          },
           "timeoutSecs": {
             "type": [
               "integer",
@@ -2283,67 +2392,13 @@
           }
         }
       },
-      "SandboxInfo": {
+      "StartMachineQuery": {
         "type": "object",
-        "description": "Sandbox status information.",
-        "required": [
-          "name",
-          "state",
-          "mounts",
-          "ports",
-          "resources",
-          "network"
-        ],
+        "description": "Query string for `POST /machines/{name}/start`.",
         "properties": {
-          "mounts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MountInfo"
-            },
-            "description": "Configured mounts (with virtiofs tags for use in container mounts)."
-          },
-          "name": {
-            "type": "string",
-            "description": "Sandbox name.",
-            "example": "my-sandbox"
-          },
-          "network": {
+          "forkable": {
             "type": "boolean",
-            "description": "Whether outbound network access is enabled."
-          },
-          "pid": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32",
-            "description": "Process ID (if running).",
-            "example": 12345
-          },
-          "ports": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PortSpec"
-            },
-            "description": "Configured ports."
-          },
-          "resources": {
-            "$ref": "#/components/schemas/ResourceSpec",
-            "description": "VM resources."
-          },
-          "restartCount": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32",
-            "description": "Number of times this sandbox has been automatically restarted.",
-            "minimum": 0
-          },
-          "state": {
-            "type": "string",
-            "description": "Current state.",
-            "example": "running"
+            "description": "Start as a fork base: back the guest RAM with a memfd (copy-on-write\ncloneable) and expose a control socket so the machine can later be forked\nwith `POST /machines/{name}/fork`. The golden freezes after its first fork."
           }
         }
       },
@@ -2358,22 +2413,6 @@
             "type": "string",
             "description": "Identifier of started resource.",
             "example": "abc123"
-          }
-        }
-      },
-      "StopContainerRequest": {
-        "type": "object",
-        "description": "Request to stop a container.",
-        "properties": {
-          "timeoutSecs": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64",
-            "description": "Timeout before force kill (seconds).",
-            "example": 10,
-            "minimum": 0
           }
         }
       },
@@ -2399,28 +2438,28 @@
       "description": "Health check endpoints"
     },
     {
-      "name": "Sandboxes",
-      "description": "Sandbox lifecycle management"
+      "name": "Node",
+      "description": "Node capacity introspection"
+    },
+    {
+      "name": "Machines",
+      "description": "Machine lifecycle management"
     },
     {
       "name": "Execution",
-      "description": "Command execution in sandboxes"
+      "description": "Command execution in machines"
     },
     {
       "name": "Logs",
       "description": "Log streaming"
     },
     {
-      "name": "Containers",
-      "description": "Container management within sandboxes"
-    },
-    {
       "name": "Images",
       "description": "OCI image management"
     },
     {
-      "name": "MicroVMs",
-      "description": "Persistent microVM management"
+      "name": "Files",
+      "description": "File upload and download"
     }
   ]
 }
