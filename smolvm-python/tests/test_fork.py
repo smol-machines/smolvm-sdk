@@ -30,8 +30,8 @@ async def test_create_sends_top_level_fields_to_machines():
     )
     c = calls[-1]
     assert c["method"] == "POST" and c["path"] == "/api/v1/machines"
-    # cpus/mem/network/image at the TOP level (not nested under "resources")
-    assert c["body"]["cpus"] == 4 and c["body"]["mem"] == 1024
+    # cpus/memoryMb/network/image at the TOP level (not nested under "resources")
+    assert c["body"]["cpus"] == 4 and c["body"]["memoryMb"] == 1024
     assert c["body"]["network"] is True and c["body"]["image"] == "python:3-alpine"
     assert "resources" not in c["body"]
 
