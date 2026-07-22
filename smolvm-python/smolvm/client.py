@@ -237,7 +237,7 @@ class SmolvmClient:
             body["workdir"] = workdir
 
         if timeout_secs:
-            body["timeout_secs"] = timeout_secs
+            body["timeoutSecs"] = timeout_secs
 
         # Use longer HTTP timeout if command timeout is specified
         http_timeout = (timeout_secs + 10) if timeout_secs else None
@@ -268,7 +268,7 @@ class SmolvmClient:
             body["workdir"] = workdir
 
         if timeout_secs:
-            body["timeout_secs"] = timeout_secs
+            body["timeoutSecs"] = timeout_secs
 
         http_timeout = (timeout_secs + 10) if timeout_secs else None
 
@@ -331,7 +331,7 @@ class SmolvmClient:
         """Pull an image into a machine."""
         body: dict[str, Any] = {"image": image}
         if oci_platform:
-            body["oci_platform"] = oci_platform
+            body["ociPlatform"] = oci_platform
 
         data = await self._request(
             "POST",
