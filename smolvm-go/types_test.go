@@ -72,7 +72,7 @@ func TestMachineInfoDecodesAPIResponse(t *testing.T) {
 		"mounts": [{"tag":"smolvm0","source":"/host","target":"/guest","readonly":false}],
 		"ports": [{"host":8080,"guest":80}],
 		"network": true,
-		"createdAt": "2026-01-01T00:00:00Z",
+		"createdAt": 1784629905,
 		"pid": 12345
 	}`)
 	var info MachineInfo
