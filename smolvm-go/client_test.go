@@ -161,6 +161,28 @@ func TestClientUploadFile(t *testing.T) {
 	}
 }
 
+// The caller's deadline must survive UploadFile, including payloads that
+// exceed the SDK's default upload window on a busy VM.
+type deadlineClientFunc func(*http.Request) (*http.Response, error)
+
+func (f deadlineClientFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestUploadFileRespectsCallerDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	callerDeadline, _ := ctx.Deadline()
+	client := NewClient("http://example.test", WithHTTPClient(deadlineClientFunc(func(req *http.Request) (*http.Response, error) {
+		got, ok := req.Context().Deadline()
+		if !ok || !got.Equal(callerDeadline) {
+			t.Errorf("upload deadline = %v, want caller deadline %v", got, callerDeadline)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"path":"/test","size":3}`))}, nil
+	})))
+	if _, err := client.UploadFile(ctx, "vm1", "/test", []byte("abc")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestClientDownloadFile(t *testing.T) {
 	const want = "downloaded contents"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

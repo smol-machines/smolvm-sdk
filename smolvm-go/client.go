@@ -341,9 +341,11 @@ func (c *Client) PullImage(ctx context.Context, machine string, req PullImageReq
 // UploadFile writes data to the given path inside the machine, creating parent
 // directories as needed.
 func (c *Client) UploadFile(ctx context.Context, machine, path string, data []byte) (*FileUploadResponse, error) {
-	if timeout := uploadDownloadTimeout(len(data)); timeout > 0 {
+	// A caller deadline owns the upload bound; a large VM bootstrap file can
+	// legitimately take longer than the SDK's default size-based timeout.
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		ctx, cancel = context.WithTimeout(ctx, uploadDownloadTimeout(len(data)))
 		defer cancel()
 	}
 
