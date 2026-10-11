@@ -92,3 +92,18 @@ func TestMachineInfoDecodesAPIResponse(t *testing.T) {
 		t.Errorf("pid: %+v", info.PID)
 	}
 }
+
+func TestCreateMachineRequestIncludesWorkloadBootstrap(t *testing.T) {
+	req := CreateMachineRequest{Name: "runtime", Image: "/opt/runtime.tar", Entrypoint: []string{"/bin/sh", "-c"}, Cmd: []string{"exec sleep infinity"}, Env: []EnvVar{{Name: "OAC_RUNTIME_ENVIRONMENT_ID", Value: "environment"}}}
+	encoded, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["image"] != "/opt/runtime.tar" || len(got["cmd"].([]any)) != 1 || got["env"].([]any)[0].(map[string]any)["name"] != "OAC_RUNTIME_ENVIRONMENT_ID" {
+		t.Fatalf("workload fields were lost: %s", encoded)
+	}
+}

@@ -161,6 +161,28 @@ func TestClientUploadFile(t *testing.T) {
 	}
 }
 
+// The caller's deadline must survive UploadFile, including payloads that
+// exceed the SDK's default upload window on a busy VM.
+type deadlineClientFunc func(*http.Request) (*http.Response, error)
+
+func (f deadlineClientFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestUploadFileRespectsCallerDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	callerDeadline, _ := ctx.Deadline()
+	client := NewClient("http://example.test", WithHTTPClient(deadlineClientFunc(func(req *http.Request) (*http.Response, error) {
+		got, ok := req.Context().Deadline()
+		if !ok || !got.Equal(callerDeadline) {
+			t.Errorf("upload deadline = %v, want caller deadline %v", got, callerDeadline)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"path":"/test","size":3}`))}, nil
+	})))
+	if _, err := client.UploadFile(ctx, "vm1", "/test", []byte("abc")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestClientDownloadFile(t *testing.T) {
 	const want = "downloaded contents"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -430,4 +452,105 @@ func TestClientUnixPanicsOnCustomHTTP(t *testing.T) {
 		}
 	}()
 	NewClient("unix:///tmp/does-not-matter.sock", WithHTTPClient(stubHTTPClient{}))
+}
+
+func TestClientMachineLabelsRoundTrip(t *testing.T) {
+	labels := map[string]string{"io.oac.installation": "owner", "io.oac.allocation": "a=b"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			var req CreateMachineRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("decode request: %v", err)
+				return
+			}
+			if req.Labels["io.oac.allocation"] != labels["io.oac.allocation"] {
+				t.Errorf("create labels = %v", req.Labels)
+			}
+		default:
+			if r.Method != http.MethodGet {
+				t.Errorf("unexpected method: %s", r.Method)
+			}
+		}
+		_ = json.NewEncoder(w).Encode(MachineInfo{Name: "vm1", Labels: labels, State: MachineStateRunning})
+	}))
+	defer srv.Close()
+	c := NewClient(srv.URL)
+	if _, err := c.CreateMachine(context.Background(), CreateMachineRequest{Name: "vm1", Labels: labels}); err != nil {
+		t.Fatal(err)
+	}
+	info, err := c.GetMachine(context.Background(), "vm1")
+	if err != nil || info.Labels["io.oac.installation"] != "owner" {
+		t.Fatalf("get labels = %+v, error = %v", info, err)
+	}
+}
+
+func TestClientExecPreservesRawOutputAndControls(t *testing.T) {
+	stdin := "credential\n"
+	noStart := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("decode request: %v", err)
+			return
+		}
+		if req["user"] != "1000:1000" || req["stdin"] != stdin || req["autoStart"] != false {
+			t.Errorf("exec controls = %v", req)
+		}
+		// JSON strings are lossy for non-UTF-8 command output; the API also
+		// returns base64 fields with the byte-exact result.
+		_, _ = io.WriteString(w, `{"exitCode":7,"stdout":"�","stderr":"","stdoutB64":"/wA=","stderrB64":""}`)
+	}))
+	defer srv.Close()
+	resp, err := NewClient(srv.URL).Exec(context.Background(), "vm1", ExecRequest{
+		Command: []string{"cat"}, User: "1000:1000", Stdin: &stdin, AutoStart: &noStart,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.ExitCode != 7 || len(resp.StdoutBytes) != 2 || resp.StdoutBytes[0] != 255 || resp.StdoutBytes[1] != 0 {
+		t.Fatalf("binary output lost: %+v", resp)
+	}
+}
+
+func TestClientExecWithResponseLimit(t *testing.T) {
+	const limit = 64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request ExecRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Errorf("decode request: %v", err)
+			return
+		}
+		if request.Command[0] == "huge" {
+			_, _ = io.WriteString(w, `{"stdout":"`+strings.Repeat("x", 1024*1024)+`"}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"exitCode":0,"stdoutB64":"/wA=","stderrB64":""}`)
+	}))
+	defer srv.Close()
+	c := NewClient(srv.URL)
+	result, err := c.ExecWithResponseLimit(context.Background(), "vm1", ExecRequest{Command: []string{"true"}}, limit)
+	if err != nil || len(result.StdoutBytes) != 2 || result.StdoutBytes[0] != 255 {
+		t.Fatalf("bounded binary exec = %+v, %v", result, err)
+	}
+	_, err = c.ExecWithResponseLimit(context.Background(), "vm1", ExecRequest{Command: []string{"huge"}}, limit)
+	if err == nil || !strings.Contains(err.Error(), "response exceeds 64 bytes") {
+		t.Fatalf("oversized exec error = %v", err)
+	}
+	if _, err := c.ExecWithResponseLimit(context.Background(), "vm1", ExecRequest{}, 0); err == nil {
+		t.Fatal("accepted zero response limit")
+	}
+}
+
+func TestClientRequestHonorsExplicitDeadlineOverDefault(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var health HealthResponse
+	if err := NewClient(srv.URL).request(ctx, http.MethodGet, "/health", nil, &health, time.Nanosecond); err != nil || health.Status != "ok" {
+		t.Fatalf("explicit deadline was overridden by default: %+v, %v", health, err)
+	}
 }

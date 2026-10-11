@@ -107,6 +107,17 @@ func (c *Client) BaseURL() string { return c.baseURL }
 
 // request issues a JSON request and decodes the response into out (if non-nil).
 func (c *Client) request(ctx context.Context, method, path string, body any, out any, timeout time.Duration) error {
+	return c.requestWithLimit(ctx, method, path, body, out, timeout, 0)
+}
+
+// requestWithLimit caps the entire JSON response before decoding. A limit of
+// zero keeps the existing unbounded behavior for callers without a cap.
+func (c *Client) requestWithLimit(ctx context.Context, method, path string, body any, out any, timeout time.Duration, maxResponseBytes int64) error {
+	// A caller-supplied deadline owns the operation bound. In particular,
+	// importing a large local OCI image can exceed the default Create timeout.
+	if _, hasDeadline := ctx.Deadline(); hasDeadline {
+		timeout = 0
+	}
 	if timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -154,6 +165,22 @@ func (c *Client) request(ctx context.Context, method, path string, body any, out
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return nil
 	}
+	if maxResponseBytes > 0 {
+		raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
+		if err != nil {
+			return fmt.Errorf("smolvm: read response: %w", err)
+		}
+		if int64(len(raw)) > maxResponseBytes {
+			return fmt.Errorf("smolvm: response exceeds %d bytes", maxResponseBytes)
+		}
+		if len(raw) == 0 {
+			return nil
+		}
+		if err := json.Unmarshal(raw, out); err != nil {
+			return fmt.Errorf("smolvm: decode response: %w", err)
+		}
+		return nil
+	}
 
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("smolvm: decode response: %w", err)
@@ -164,7 +191,7 @@ func (c *Client) request(ctx context.Context, method, path string, body any, out
 // readAPIError consumes resp.Body and returns a typed *Error.
 func readAPIError(resp *http.Response) error {
 	var body ApiErrorResponse
-	raw, _ := io.ReadAll(resp.Body)
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if len(raw) > 0 {
 		_ = json.Unmarshal(raw, &body)
 	}
@@ -279,6 +306,21 @@ func (c *Client) Exec(ctx context.Context, machine string, req ExecRequest) (*Ex
 	return &out, nil
 }
 
+// ExecWithResponseLimit runs a command while bounding the size of its HTTP JSON
+// response, including both text and base64 output. maxResponseBytes must be
+// positive; callers should also check the decoded stdout/stderr sizes.
+func (c *Client) ExecWithResponseLimit(ctx context.Context, machine string, req ExecRequest, maxResponseBytes int64) (*ExecResponse, error) {
+	if maxResponseBytes <= 0 || maxResponseBytes == int64(^uint64(0)>>1) {
+		return nil, fmt.Errorf("smolvm: response limit must be positive and leave room for a sentinel byte")
+	}
+	var out ExecResponse
+	path := fmt.Sprintf("/api/v1/machines/%s/exec", url.PathEscape(machine))
+	if err := c.requestWithLimit(ctx, http.MethodPost, path, req, &out, execHTTPTimeout(req.TimeoutSecs), maxResponseBytes); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // Run executes a command inside an OCI image within the machine.
 func (c *Client) Run(ctx context.Context, machine string, req RunRequest) (*ExecResponse, error) {
 	var out ExecResponse
@@ -336,9 +378,11 @@ func (c *Client) PullImage(ctx context.Context, machine string, req PullImageReq
 // UploadFile writes data to the given path inside the machine, creating parent
 // directories as needed.
 func (c *Client) UploadFile(ctx context.Context, machine, path string, data []byte) (*FileUploadResponse, error) {
-	if timeout := uploadDownloadTimeout(len(data)); timeout > 0 {
+	// A caller deadline owns the upload bound; a large VM bootstrap file can
+	// legitimately take longer than the SDK's default size-based timeout.
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		ctx, cancel = context.WithTimeout(ctx, uploadDownloadTimeout(len(data)))
 		defer cancel()
 	}
 
