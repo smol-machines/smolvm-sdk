@@ -431,3 +431,75 @@ func TestClientUnixPanicsOnCustomHTTP(t *testing.T) {
 	}()
 	NewClient("unix:///tmp/does-not-matter.sock", WithHTTPClient(stubHTTPClient{}))
 }
+
+func TestClientMachineLabelsRoundTrip(t *testing.T) {
+	labels := map[string]string{"io.oac.installation": "owner", "io.oac.allocation": "a=b"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			var req CreateMachineRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("decode request: %v", err)
+				return
+			}
+			if req.Labels["io.oac.allocation"] != labels["io.oac.allocation"] {
+				t.Errorf("create labels = %v", req.Labels)
+			}
+		default:
+			if r.Method != http.MethodGet {
+				t.Errorf("unexpected method: %s", r.Method)
+			}
+		}
+		_ = json.NewEncoder(w).Encode(MachineInfo{Name: "vm1", Labels: labels, State: MachineStateRunning})
+	}))
+	defer srv.Close()
+	c := NewClient(srv.URL)
+	if _, err := c.CreateMachine(context.Background(), CreateMachineRequest{Name: "vm1", Labels: labels}); err != nil {
+		t.Fatal(err)
+	}
+	info, err := c.GetMachine(context.Background(), "vm1")
+	if err != nil || info.Labels["io.oac.installation"] != "owner" {
+		t.Fatalf("get labels = %+v, error = %v", info, err)
+	}
+}
+
+func TestClientExecPreservesRawOutputAndControls(t *testing.T) {
+	stdin := "credential\n"
+	noStart := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("decode request: %v", err)
+			return
+		}
+		if req["user"] != "1000:1000" || req["stdin"] != stdin || req["autoStart"] != false {
+			t.Errorf("exec controls = %v", req)
+		}
+		// JSON strings are lossy for non-UTF-8 command output; the API also
+		// returns base64 fields with the byte-exact result.
+		_, _ = io.WriteString(w, `{"exitCode":7,"stdout":"�","stderr":"","stdoutB64":"/wA=","stderrB64":""}`)
+	}))
+	defer srv.Close()
+	resp, err := NewClient(srv.URL).Exec(context.Background(), "vm1", ExecRequest{
+		Command: []string{"cat"}, User: "1000:1000", Stdin: &stdin, AutoStart: &noStart,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.ExitCode != 7 || len(resp.StdoutBytes) != 2 || resp.StdoutBytes[0] != 255 || resp.StdoutBytes[1] != 0 {
+		t.Fatalf("binary output lost: %+v", resp)
+	}
+}
+
+func TestClientRequestHonorsExplicitDeadlineOverDefault(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var health HealthResponse
+	if err := NewClient(srv.URL).request(ctx, http.MethodGet, "/health", nil, &health, time.Nanosecond); err != nil || health.Status != "ok" {
+		t.Fatalf("explicit deadline was overridden by default: %+v, %v", health, err)
+	}
+}

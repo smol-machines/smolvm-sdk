@@ -38,17 +38,19 @@ const (
 
 // MachineInfo describes a machine returned by the server.
 type MachineInfo struct {
-	Name      string       `json:"name"`
-	State     MachineState `json:"state"`
-	CPUs      int          `json:"cpus"`
-	MemoryMB  int          `json:"memoryMb"`
-	Mounts    []MountInfo  `json:"mounts"`
-	Ports     []PortSpec   `json:"ports"`
-	Network   bool         `json:"network"`
-	CreatedAt int64        `json:"createdAt"`
-	PID       *int         `json:"pid,omitempty"`
-	StorageGB *int64       `json:"storageGb,omitempty"`
-	OverlayGB *int64       `json:"overlayGb,omitempty"`
+	Name      string            `json:"name"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	Image     string            `json:"image,omitempty"`
+	State     MachineState      `json:"state"`
+	CPUs      int               `json:"cpus"`
+	MemoryMB  int               `json:"memoryMb"`
+	Mounts    []MountInfo       `json:"mounts"`
+	Ports     []PortSpec        `json:"ports"`
+	Network   bool              `json:"network"`
+	CreatedAt int64             `json:"createdAt"`
+	PID       *int              `json:"pid,omitempty"`
+	StorageGB *int64            `json:"storageGb,omitempty"`
+	OverlayGB *int64            `json:"overlayGb,omitempty"`
 }
 
 // ImageInfo describes an OCI image inside a machine.
@@ -81,17 +83,21 @@ type MachineCountsResponse struct {
 // are sent flat at the top level — the server does not accept a nested
 // `resources` object on this endpoint.
 type CreateMachineRequest struct {
-	Name         string      `json:"name,omitempty"`
-	Image        string      `json:"image,omitempty"`
-	From         string      `json:"from,omitempty"`
-	Mounts       []MountSpec `json:"mounts,omitempty"`
-	Ports        []PortSpec  `json:"ports,omitempty"`
-	CPUs         int         `json:"cpus,omitempty"`
-	MemoryMB     int         `json:"memoryMb,omitempty"`
-	Network      bool        `json:"network,omitempty"`
-	StorageGB    *int64      `json:"storageGb,omitempty"`
-	OverlayGB    *int64      `json:"overlayGb,omitempty"`
-	AllowedCidrs []string    `json:"allowedCidrs,omitempty"`
+	Name         string            `json:"name,omitempty"`
+	Labels       map[string]string `json:"labels,omitempty"`
+	Image        string            `json:"image,omitempty"`
+	Entrypoint   []string          `json:"entrypoint,omitempty"`
+	Cmd          []string          `json:"cmd,omitempty"`
+	Env          []EnvVar          `json:"env,omitempty"`
+	From         string            `json:"from,omitempty"`
+	Mounts       []MountSpec       `json:"mounts,omitempty"`
+	Ports        []PortSpec        `json:"ports,omitempty"`
+	CPUs         int               `json:"cpus,omitempty"`
+	MemoryMB     int               `json:"memoryMb,omitempty"`
+	Network      bool              `json:"network,omitempty"`
+	StorageGB    *int64            `json:"storageGb,omitempty"`
+	OverlayGB    *int64            `json:"overlayGb,omitempty"`
+	AllowedCidrs []string          `json:"allowedCidrs,omitempty"`
 }
 
 // ExecRequest is the body for POST /api/v1/machines/{name}/exec and exec/stream.
@@ -100,6 +106,10 @@ type ExecRequest struct {
 	Env         []EnvVar `json:"env,omitempty"`
 	Workdir     string   `json:"workdir,omitempty"`
 	TimeoutSecs *int64   `json:"timeoutSecs,omitempty"`
+	User        string   `json:"user,omitempty"`
+	Stdin       *string  `json:"stdin,omitempty"`
+	Background  bool     `json:"background,omitempty"`
+	AutoStart   *bool    `json:"autoStart,omitempty"`
 }
 
 // RunRequest is the body for POST /api/v1/machines/{name}/run.
@@ -113,12 +123,14 @@ type RunRequest struct {
 
 // ExecResponse is the result of a synchronous exec or run call.
 //
-// stdout and stderr are UTF-8; non-UTF-8 bytes are replaced with U+FFFD
-// (a JSON-over-HTTP limitation, not smolvm itself).
+// Stdout and Stderr are lossy UTF-8 views. StdoutBytes and StderrBytes
+// are decoded from the server's base64 fields and preserve the exact bytes.
 type ExecResponse struct {
-	ExitCode int    `json:"exitCode"`
-	Stdout   string `json:"stdout"`
-	Stderr   string `json:"stderr"`
+	ExitCode    int    `json:"exitCode"`
+	Stdout      string `json:"stdout"`
+	Stderr      string `json:"stderr"`
+	StdoutBytes []byte `json:"stdoutB64,omitempty"`
+	StderrBytes []byte `json:"stderrB64,omitempty"`
 }
 
 // PullImageRequest is the body for POST /api/v1/machines/{name}/images/pull.
@@ -186,6 +198,9 @@ type ApiErrorResponse struct {
 type Config struct {
 	// Name is the unique machine name. Required.
 	Name string
+
+	// Labels are opaque machine metadata persisted by the server.
+	Labels map[string]string
 
 	// ServerURL is the smolvm server URL (default: http://127.0.0.1:8080).
 	ServerURL string

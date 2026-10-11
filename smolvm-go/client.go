@@ -107,6 +107,11 @@ func (c *Client) BaseURL() string { return c.baseURL }
 
 // request issues a JSON request and decodes the response into out (if non-nil).
 func (c *Client) request(ctx context.Context, method, path string, body any, out any, timeout time.Duration) error {
+	// A caller-supplied deadline owns the operation bound. In particular,
+	// importing a large local OCI image can exceed the default Create timeout.
+	if _, hasDeadline := ctx.Deadline(); hasDeadline {
+		timeout = 0
+	}
 	if timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, timeout)

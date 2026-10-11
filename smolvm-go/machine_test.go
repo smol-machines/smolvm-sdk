@@ -191,3 +191,24 @@ func TestEnvVarSliceContainsAllPairs(t *testing.T) {
 		t.Errorf("unexpected map: %v", seen)
 	}
 }
+
+func TestMachineStartForwardsLabels(t *testing.T) {
+	const owner = "oac-owner"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/machines" {
+			var req CreateMachineRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("decode create: %v", err)
+				return
+			}
+			if req.Labels["owner"] != owner {
+				t.Errorf("labels lost by high-level Machine: %v", req.Labels)
+			}
+		}
+		_ = json.NewEncoder(w).Encode(MachineInfo{Name: "vm1", State: MachineStateRunning})
+	}))
+	defer srv.Close()
+	if err := NewMachine(Config{Name: "vm1", ServerURL: srv.URL, Labels: map[string]string{"owner": owner}}).Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}

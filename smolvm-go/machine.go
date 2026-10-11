@@ -77,6 +77,7 @@ func (m *Machine) Start(ctx context.Context) error {
 
 	req := CreateMachineRequest{
 		Name:         m.config.Name,
+		Labels:       m.config.Labels,
 		Image:        m.config.Image,
 		From:         m.config.From,
 		Mounts:       m.config.Mounts,
