@@ -513,6 +513,35 @@ func TestClientExecPreservesRawOutputAndControls(t *testing.T) {
 	}
 }
 
+func TestClientExecWithResponseLimit(t *testing.T) {
+	const limit = 64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request ExecRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Errorf("decode request: %v", err)
+			return
+		}
+		if request.Command[0] == "huge" {
+			_, _ = io.WriteString(w, `{"stdout":"`+strings.Repeat("x", 1024*1024)+`"}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"exitCode":0,"stdoutB64":"/wA=","stderrB64":""}`)
+	}))
+	defer srv.Close()
+	c := NewClient(srv.URL)
+	result, err := c.ExecWithResponseLimit(context.Background(), "vm1", ExecRequest{Command: []string{"true"}}, limit)
+	if err != nil || len(result.StdoutBytes) != 2 || result.StdoutBytes[0] != 255 {
+		t.Fatalf("bounded binary exec = %+v, %v", result, err)
+	}
+	_, err = c.ExecWithResponseLimit(context.Background(), "vm1", ExecRequest{Command: []string{"huge"}}, limit)
+	if err == nil || !strings.Contains(err.Error(), "response exceeds 64 bytes") {
+		t.Fatalf("oversized exec error = %v", err)
+	}
+	if _, err := c.ExecWithResponseLimit(context.Background(), "vm1", ExecRequest{}, 0); err == nil {
+		t.Fatal("accepted zero response limit")
+	}
+}
+
 func TestClientRequestHonorsExplicitDeadlineOverDefault(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
